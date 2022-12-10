@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en" class="">
+
+<head>
+	<meta charset='utf-8'>
+	<meta http-equiv="Cache-Control" content="private, no-store" />
+	<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+	<title>Network Info</title>
+	<style>
+	body {
+		text-align: center;
+		font-family: verdana, sans-serif;
+		background: #000000;
+	}
+
+	div {
+		padding: 5px;
+		font-size: 1em;
+	}
+	
+	p {
+		margin: 0.5em 0;
+	}
+
+	button {
+		border: 0;
+		border-radius: 0.3rem;
+		background: #1fa3ec;
+		color: #faffff;
+		line-height: 2.4rem;
+		font-size: 1.2rem;
+		width: 100%;
+		-webkit-transition-duration: 0.4s;
+		transition-duration: 0.4s;
+		cursor: pointer;
+	}
+	
+	input:hover {
+		background: #0e70a4;
+	}
+	
+	button:hover {
+		background: #0e70a4;
+	}
+
+	.bred {
+		background: #d43535;
+	}
+	
+	.bred:hover {
+		background: #931f1f;
+	}
+	
+	</style>
+</head>
+
+<body>
+	<div style='text-align:left;display:inline-block;color:#eaeaea;min-width:340px;'>
+		<div style='text-align:center;color:#eaeaea;'>
+		<div style='text-align:center;'>Enter your network info here.</div>
+		<br>
+		<p>
+		<form action="/savenetinfo" method="post">
+			<div style='text-align:left;color:#eaeaea;'>
+			<label>SSID:&nbsp;&nbsp;</label><input maxlength="32" name="ssid"><br><br>
+			<label>Password:&nbsp;&nbsp;</label><input maxlength="63" name="password"><br><br>
+			mDNS address (leave empty for no mDNS):<br>
+			<label>http://&nbsp;&nbsp;</label><input maxlength="30" name="mdns_host">.local<br><br>
+			<button type="submit" value="Save">Save</button>
+			</div>
+		</form>
+
+	  	<div id="main_button" class="grid-item-button">
+			<a href="/"><button name="">Main Menu</button></a>
+		</div>
+	  	<!--div class="grid-item-button">
+			<a href="/restart.html"><button name="" class="button bred">Restart</button></a>
+		</div-->
+		</p>
+	</div>
+</body>
+</html>
+

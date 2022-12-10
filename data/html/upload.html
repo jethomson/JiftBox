@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en" class="">
+
+<head>
+<meta charset='utf-8'>
+	<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+	<title>Upload Folder</title>
+	<style>
+	body {
+		text-align: center;
+		font-family: verdana, sans-serif;
+		background: #000000;
+	}
+
+	div {
+		padding: 5px;
+		font-size: 1rem;
+	}
+	
+	p {
+		margin: 0.5rem 0;
+	}
+	
+	button,
+	input {
+		border: 0;
+		border-radius: 0.3rem;
+		background: #1fa3ec;
+		color: #faffff;
+		line-height: 2.4rem;
+		font-size: 1.2rem;
+		width: 100%;
+		-webkit-transition-duration: 0.4s;
+		transition-duration: 0.4s;
+		cursor: pointer;
+	}
+	
+	input:hover {
+		background: #0e70a4;
+	}
+	</style>
+</head>
+
+<body>
+	<div style='text-align:left;display:inline-block;color:#eaeaea;min-width:340px;'>
+		<div style='text-align:center;color:#eaeaea;'>
+			<div style='text-align:center;'>Select a folder to upload.</div>
+			<br>
+			<p>
+			<form id='upload' method='POST' action='/upload' enctype='multipart/form-data'>
+				<!--need to upload filesize first because Content-Length [request->contentLength()] isn't the actual file size-->
+				<!--input id='filesize' name="filesize" value="0" style="display:none"-->
+				<input id='file' type='file' name='update' webkitdirectory="" directory="" />
+				<p></p>
+				<input id='upload_btn' type='submit' value='Upload'>
+			</form>
+			</p>
+		  	<div id="main_button" class="grid-item-button">
+				<a href="/"><button name="">Main Menu</button></a>
+			</div>
+		</div>
+	</div>
+</body>
+
+
+<script>
+
+	//need to handle upload failure, timeout, etc?
+	function update_button_text(i) {
+		var text = "Uploading";
+		var j = i;
+		while(j) {
+			text = "." + text + '.';
+			j--;
+		}
+		i = (i+1)%4;
+		document.getElementById('upload_btn').value = text;
+		(function(p){setTimeout(function(){update_button_text(p)}, 750)})(i);
+	}
+
+
+	document.querySelector('form').addEventListener('submit', (e) => {
+		//document.getElementById('filesize').value = document.getElementById('file').files[0].size;
+		update_button_text(0);
+	});
+	
+</script>
+
+</html>

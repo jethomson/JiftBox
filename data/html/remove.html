@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en" class="">
+<head>
+	<meta charset='utf-8'>
+	<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+	<title>Remove Files</title>
+	<style>
+	
+	:root {
+		--switch-color: white;
+	}
+	
+	body {
+		text-align: center;
+		font-family: verdana, sans-serif;
+		color: white;
+		background: black;
+	}
+	
+	.grid-container {
+		display: grid;
+		grid-template-columns: auto auto;
+		grid-row-gap: 5px;
+		width: 95vw;
+		/*height: 85vh;*/
+		max-width: 600px;
+		max-height: 800px;
+  		align-items: center;
+  		justify-content: center;
+		margin: 0 auto;
+	}
+	.grid-item-form {
+		display: grid;
+  		align-items: center;
+  		justify-content: center;
+	}
+	.grid-item-left {
+		width: 100%;
+		display: inline-flex; /*prevent div from being slightly larger on the bottom than the switch */
+		/*background: red;*/
+	}
+	.grid-item-right {
+		/*font-size: 2.3rem;
+		font-weight:bold;*/
+		color: white;
+		text-align: left;
+		width: 100%;
+		white-space: nowrap;
+		/*background: red;*/
+	}
+	.grid-item-button {
+		grid-column: 1 / span 2;
+		font-weight:bold;
+		color: white;
+		text-align: center;
+		width: 100%;
+  		align-items: center;
+  		justify-content: center;
+	}
+	.grid-item:active {
+		background: #0e70a4;
+	}
+	.span-regular-file {
+		padding-left: 1em;
+	}
+	
+	button {
+		border: 0;
+		border-radius: 0.3rem;
+		background: #1fa3ec;
+		color: #faffff;
+		line-height: 2.4rem;
+		font-size: 1.2rem;
+		width: 100%;
+		-webkit-transition-duration: 0.4s;
+		transition-duration: 0.4s;
+		cursor: pointer;
+	}
+	
+	button:hover {
+		background: #0e70a4;
+	}
+	
+	.bred {
+		background: #d43535;
+	}
+	
+	.bred:hover {
+		background: #931f1f;
+	}
+	
+	.bgrn {
+		background: #47c266;
+	}
+	
+	.bgrn:hover {
+		background: #5aaf6f;
+	}
+
+	a:link {
+		color: inherit;
+		text-decoration: none;
+	}
+
+	a:visited {
+		color: inherit;
+		text-decoration: none;
+	}
+
+	a:hover {
+		color: yellow;
+		text-decoration: none;
+	}
+
+	a:active {
+		color: inherit;
+		text-decoration: none;
+	}
+	
+
+
+	</style>
+</head>
+<body>
+
+
+	<h3>Deleting files takes awhile. Reload this page to see an updated file list.</h3>
+	<div id="maindiv" class="grid-container" style="visibility: hidden">
+		<form class="grid-item-form" id="delete_form" action="delete" method="post">
+	  	<div id="insert_file_list_before_here" style="display: none"></div>
+
+	  	<div class="grid-item-button">
+			<!--<input id='delete_btn' type='submit' value='Delete Files(s)'>-->
+			<button id='delete_btn' type='submit'>Queue File(s) For Deletion</button>
+		</div>
+		</form>
+		
+	  	<div id="main_button" class="grid-item-button">
+			<a href="/"><button name="">Main Menu</button></a>
+		</div>
+
+	  	<!--div class="grid-item-button" style="display: none"-->
+	  	<!--
+	  	<div class="grid-item-button">
+			<form action="select_bin" method="get"><button name="">Select Bin File</button></form>
+		</div>
+	  	<div class="grid-item-button">
+			<form action="restart" method="get" onsubmit="return confirm(&quot;Confirm Restart&quot;);"><button name="" class="button bred">Restart</button></form>
+		</div>
+		-->
+	</div>
+
+
+<script>
+
+function insert_file_list(responseText) {
+	var maindiv = document.getElementById("maindiv");
+	var form = document.getElementById("delete_form");
+	
+	//var insert_point = document.getElementById("insert_file_list_here");
+	//var content = document.createTextNode(responseText);
+	//console.log(responseText);
+	//insert_point.appendChild(content);
+	
+	var insert_point = document.getElementById("insert_file_list_before_here");
+	
+
+	if (responseText != "") {
+		var files = responseText.split('\n');
+		for (var i in files) {
+			if (files[i] != "") {
+				var switch_div = document.createElement("div");
+				var switch_input = document.createElement("input");
+			
+				switch_div.classList.add("grid-item-left");
+				//switch_input.classList.add("smart_checkbox");
+				//switch_input.classList.add("switch");
+				switch_input.setAttribute("type", "checkbox");
+				switch_input.setAttribute("id", files[i]);
+				switch_input.setAttribute("name", files[i]);
+
+				switch_div.appendChild(switch_input);
+
+				var label_div = document.createElement("div");
+				var label_span = document.createElement("span");
+
+				var label_text = files[i];
+				if (!files[i].endsWith('/')) {
+					//label_text = '├──'+label_text;
+					//label_text = '\\___'+label_text;
+					label_span.classList.add("span-regular-file");
+				}
+			
+				label_div.classList.add("grid-item-right");
+				//label_span.setAttribute("text", label_text);
+				//label_span.setAttribute("id", "smart_text_"+devices[d].text);
+			
+
+				label_span.appendChild(document.createTextNode(label_text));
+				label_div.appendChild(label_span);
+			
+				form.insertBefore(switch_div, insert_point);
+				form.insertBefore(label_div, insert_point);
+			}
+		}
+	}
+	else {
+		var not_found_div = document.createElement("div");
+		not_found_div.innerText = "No files found.";
+		not_found_div.style = "color: white; text-align: center; width: 100%;"
+		form.insertBefore(not_found_div, insert_point);
+	}
+	
+
+	maindiv.style.visibility = "visible"; 
+}
+
+function pull_file_list() {
+	var xmlhttp = new XMLHttpRequest();
+	xmlhttp.onreadystatechange = function() {
+		if (this.readyState == 4 && this.status == 200) {
+			console.log("-----");
+			console.log(this.responseText);
+			console.log("-----");
+			insert_file_list(this.responseText);
+		}
+	};
+
+	xmlhttp.onerror   = function() {console.log("onerror")};
+	xmlhttp.onabort   = function() {console.log("onabort")};
+	xmlhttp.ontimeout = function() {console.log("ontimeout")};
+
+	url = "/files";
+	if (window.location.protocol == "file:") {
+		// makes for easier debugging.
+		// if html is loaded locally, can see the results of editing more easily.
+		// otherwise every change to html would require uploading new version to microcontroller.
+		url = "http://192.168.1.15"+url;
+	}
+	xmlhttp.open("GET", url, true);
+
+	//xmlhttp.timeout = 5000;
+	xmlhttp.send();
+}
+
+
+
+pull_file_list();
+
+</script>
+</body>
+</html>

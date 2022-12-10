@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en" class="">
+
+<head>
+	<meta charset='utf-8'>
+	<meta http-equiv="Cache-Control" content="private, no-store" />
+	<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+	<title>File Manager Main</title>
+	<style>
+	body {
+		text-align: center;
+		font-family: verdana, sans-serif;
+		background: #000000;
+	}
+
+	div {
+		padding: 5px;
+		font-size: 1em;
+	}
+	
+	p {
+		margin: 0.5em 0;
+	}
+
+	button {
+		border: 0;
+		border-radius: 0.3rem;
+		background: #1fa3ec;
+		color: #faffff;
+		line-height: 2.4rem;
+		font-size: 1.2rem;
+		width: 100%;
+		-webkit-transition-duration: 0.4s;
+		transition-duration: 0.4s;
+		cursor: pointer;
+	}
+	
+	button:hover {
+		background: #0e70a4;
+	}
+
+	.bred {
+		background: #d43535;
+	}
+	
+	.bred:hover {
+		background: #931f1f;
+	}
+	
+	</style>
+</head>
+
+<body>
+	<div style='text-align:left;display:inline-block;color:#eaeaea;min-width:340px;'>
+		<div style='text-align:center;color:#eaeaea;'>
+		<div style='text-align:center;'>
+		JPEG images and animated GIFs are supported.
+		<details>
+		<summary>JPEGs</summary>
+		JPEG images will be resized, rotated, and cropped automatically.
+		For best results and to save space you should resize your images to a width of $MY_WIDTH$ and a height of $MY_HEIGHT$.
+		Progressive JPEGs are not supported.
+		</details>
+		<details>
+		<summary>GIFs</summary>
+		Instructions on how to make a compatible GIF:
+		<ol>
+		<li>Go to ezgif.com</li>
+		<li>Click "Crop"</li>
+		<li>Upload a GIF</li>
+		<li>Pick the aspect ratio that matches your display ($MY_RATIO$)</li>
+		<li>Frame the portion of the GIF you want to keep using your mouse</li>
+		<li>Click "Crop image!"</li>
+		<li>Click "resize" under the resulting GIF</li>
+		<li>Enter the width ($MY_WIDTH$) and height ($MY_HEIGHT$) of your display</li>
+		<li>Click "Resize image!"</li>
+		<li>Click "save" under the resulting GIF</li>
+		<li>Rename your GIF</li>
+		<li>Put your GIF in a folder</li>
+		<li>Click "Upload Files" on this page</li>
+		<li>Click "Browse" and select your GIF's folder</li>
+		<li>Click "Upload"</li>
+		<li>Wait for the upload to finish</li>
+		<li>Press the reset button on the device</li>		
+		</ol>
+		</details>
+		</div>
+		<br>
+		<p>
+	  	<div id="upload_button" class="grid-item-button">
+			<a href="/upload.html" comment="use <a> instead of <form> because want to be able to open remote in a new tab"><button name="">Upload Files</button></a>
+		</div>
+	  	<div id="manage_button" class="grid-item-button">
+			<a href="/remove.html"><button name="">Manage Files</button></a>
+		</div>
+	  	<div id="network_button" class="grid-item-button">
+			<a href="/network.html"><button name="">Network Settings</button></a>
+		</div>
+	  	<div class="grid-item-button">
+			<!--form action="/restart.html" method="get" onsubmit="return confirm(&quot;Confirm Restart&quot;);"><button name="" class="button bred">Restart</button></form-->
+			<a href="/restart.html"><button name="" class="button bred">Restart</button></a>
+		</div>
+		</p>
+	</div>
+</body>
+</html>
