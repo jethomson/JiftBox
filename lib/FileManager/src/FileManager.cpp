@@ -32,6 +32,8 @@
 AsyncWebServer web_server(80);
 //AsyncHttpClient ahClient;
 
+DNSServer dnsServer;
+
 Preferences preferences;
 
 
@@ -46,7 +48,27 @@ uint16_t height = 0;
 String ratio;
 
 
+class CaptiveRequestHandler : public AsyncWebHandler {
+public:
+  CaptiveRequestHandler() {}
+  virtual ~CaptiveRequestHandler() {}
+
+  bool canHandle(AsyncWebServerRequest *request){
+    //request->addInterestingHeader("ANY");
+    return true;
+  }
+
+  void handleRequest(AsyncWebServerRequest *request) {
+    String url = "http://";
+    url += get_ip();
+    url += "/network.html";
+    request->redirect(url);
+  }
+};
+
+
 void handle_folder_upload(AsyncWebServerRequest *request, const String &param_path, size_t index, uint8_t *data, size_t len, bool final) {
+
   //ESP.wdtDisable();
 
   static File fs_file; //new file to be written to the filesystem
@@ -283,10 +305,11 @@ String get_mdns_addr(void) {
 
 void wifi_AP(void) {
   DEBUG_PRINTLN(F("Entering AP Mode."));
-  WiFi.softAP(SOFT_AP_SSID, "123456789");
+  //WiFi.softAP(SOFT_AP_SSID, "123456789");
+  WiFi.softAP(SOFT_AP_SSID, "");
   
   IP = WiFi.softAPIP();
-  
+
   DEBUG_PRINT(F("AP IP address: "));
   DEBUG_PRINTLN(IP);
 }
@@ -355,6 +378,16 @@ String processor(const String& var) {
   return String();
 }
 
+bool filterOnNotLocal(AsyncWebServerRequest *request) {
+  // have to refer to service when requesting hostname from MDNS
+  // but this code is not working for me.
+  //Serial.println(MDNS.hostname(1));
+  //Serial.println(MDNS.hostname(MDNS.queryService("http", "tcp")));
+  //return request->host() != get_ip() && request->host() != MDNS.hostname(1); 
+
+  return request->host() != get_ip() && request->host() != mdns_host;
+}
+
 void web_server_initiate(void) {
 
   if (WiFi.getMode() == WIFI_STA) {
@@ -383,6 +416,16 @@ void web_server_initiate(void) {
 
     web_server.on("/network.html", HTTP_GET, [](AsyncWebServerRequest *request) {
       request->send(LittleFS, "/html/network.html");
+    });
+
+    web_server.on("/network.html", HTTP_GET, [](AsyncWebServerRequest *request) {
+      request->send(LittleFS, "/html/network.html");
+    });
+
+    web_server.on("/overlay.html", HTTP_GET, [](AsyncWebServerRequest *request) {
+      //String overlay_url = "/html/overlay.html?display_width=";
+      //overlay_url + String(width) + "&display_height=" + String(height);
+      request->send(LittleFS, "/html/overlay.html", String(), false, processor);
     });
 
 
@@ -443,13 +486,13 @@ void web_server_initiate(void) {
   web_server.on("/savenetinfo", HTTP_POST, [](AsyncWebServerRequest *request) {
     preferences.begin("netinfo", false);
 
-    int params = request->params();
-    for(int i=0; i < params; i++){
-      AsyncWebParameter* p = request->getParam(i);
-      if(p->isPost()){
-        DEBUG_PRINTF("POST[%s]: %s\n", p->name().c_str(), p->value().c_str());
-      }
-    }
+    //int params = request->params();
+    //for(int i=0; i < params; i++){
+    //  AsyncWebParameter* p = request->getParam(i);
+    //  if(p->isPost()){
+    //    DEBUG_PRINTF("POST[%s]: %s\n", p->name().c_str(), p->value().c_str());
+    //  }
+    //}
 
     if(request->hasParam("ssid", true)) {
       AsyncWebParameter* p = request->getParam("ssid", true);
@@ -481,10 +524,17 @@ void web_server_initiate(void) {
     request->send(LittleFS, "/html/restart.html");
   });
 
+
+  // create a captive portal that catches every attempt to access data besides what the ESP serves to network.html
+  // requests to the ESP are handled normally
+  // a captive portal makes it easier for a user to save their WiFi credentials to the ESP because they do not
+  // need to know the ESP's IP address.
+  dnsServer.start(53, "*", IP);
+  web_server.addHandler(new CaptiveRequestHandler()).setFilter(filterOnNotLocal);
+
   DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
   web_server.begin();
 }
-
 
 
 void fm_setup(uint16_t w, uint16_t h, String r) {
@@ -494,9 +544,6 @@ void fm_setup(uint16_t w, uint16_t h, String r) {
 
   if (!LittleFS.begin()) {
     DEBUG_PRINTLN(F("Failed to mount file system"));
-    //LittleFS.format();
-    //delay(2000);
-    //ESP.restart();
   }
 
   if (!LittleFS.exists(IMG_ROOT)) {
@@ -511,6 +558,8 @@ void fm_setup(uint16_t w, uint16_t h, String r) {
 
 void fm_loop(void) {
   //ESP.wdtFeed();
+
+  dnsServer.processNextRequest();
 
   if (restart_needed || (WiFi.getMode() == WIFI_STA && WiFi.status() != WL_CONNECTED)) {
     delay(2000);

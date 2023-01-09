@@ -3,6 +3,8 @@
 
 #include <Arduino.h>
 
+#include <DNSServer.h>
+
 #include <WiFi.h>
 #include <WiFiClient.h>
 //#include <AsyncTCP.h>
@@ -92,6 +94,7 @@ void wifi_AP(void);
 bool wifi_connect(void);
 void mdns_setup(void);
 String processor(const String& var);
+bool filterOnNotLocal(AsyncWebServerRequest *);
 void web_server_initiate(void);
 void fm_setup(uint16_t w, uint16_t h, String r);
 void fm_loop(void);

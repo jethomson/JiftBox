@@ -63,9 +63,10 @@
 		<form action="/savenetinfo" method="post">
 			<div style='text-align:left;color:#eaeaea;'>
 			<label>SSID:&nbsp;&nbsp;</label><input maxlength="32" name="ssid"><br><br>
-			<label>Password:&nbsp;&nbsp;</label><input maxlength="63" name="password"><br><br>
+			<label>Password:&nbsp;&nbsp;</label><input maxlength="63" id="password" name="password" value="type password here" type="password">&nbsp;&nbsp;<input id="show" type="checkbox" onclick="sp()" name="" style="position: absolute; opacity: 0; width: 0; height: 0;"><label id="show_lbl" for="show">show</label>
+			<br><br>
 			mDNS address (leave empty for no mDNS):<br>
-			<label>http://&nbsp;&nbsp;</label><input maxlength="30" name="mdns_host">.local<br><br>
+			<label>http://&nbsp;&nbsp;</label><input maxlength="30" name="mdns_host" autocapitalize="none">.local<br><br>
 			<button type="submit" value="Save">Save</button>
 			</div>
 		</form>
@@ -78,6 +79,14 @@
 		</div-->
 		</p>
 	</div>
+	<script>
+		function sp(){
+			let pf = document.getElementById("password");
+			let lbl = document.getElementById("show_lbl");
+			pf.type = (pf.type === "text" ? "password" : "text");
+			lbl.textContent = (pf.type === "text" ? "hide" : "show");
+		}
+	</script>
 </body>
 </html>
 

@@ -8,7 +8,6 @@ Import("env")
 
 
 def dist(source, target, env):
-
   build_dir = env.subst("$BUILD_DIR")
 
   bootloader = f'{build_dir}/bootloader.bin'
@@ -86,10 +85,6 @@ Now when you browse to http://jiftbox.local you will be able to upload and delet
 Once you have finished file management, restart the device, wait a few seconds, and the images will play automatically.
 """, file=fr)
 
-  #print(env.subst(env.get("UPLOADERFLAGS")))
-  #print(env.subst(env.get("UPLOADCMD")))
-
-
   upload_cmd = ""
   uf = env.subst(env.get("UPLOADERFLAGS"))
   i = 0
@@ -104,7 +99,7 @@ Once you have finished file management, restart the device, wait a few seconds, 
       i += 2
     else:
       break
-        
+
   while i < len(uf):
     upload_cmd += f" {uf[i]} {os.path.basename(uf[i+1])}"
     i += 2
@@ -155,6 +150,9 @@ Once you have finished file management, restart the device, wait a few seconds, 
 
 
 
-# custom action before building SPIFFS image. For example, compress HTML, etc.
-env.AddPostAction("$BUILD_DIR/littlefs.bin", dist)
+#if "$BUILD_DIR/littlefs.bin" is used as the target then dist is called for both Build Filesystem Image and Upload Filesytem Image
+# however Upload Filesytem Image does not set all of the same UPLOADERFLAGS that Build Filesystem Image, which crashes the python script
+# therefore use "buildfs" as the target
+#env.AddPostAction("$BUILD_DIR/littlefs.bin", dist)
+env.AddPostAction("buildfs", dist)
 
