@@ -1,7 +1,8 @@
 #ifndef __JPEGDRAW__
 #define __JPEGDRAW__
 
-void JPEGDraw_setup(TFT_eSPI *tft);
+//void JPEGDraw_setup(TFT_eSPI *tft);
+void JPEGDraw_setup(TFT_eSprite *sprite);
 int JPEGDraw(JPEGDRAW *pDraw);
 void * JPEGOpenFile(const char *filename, int32_t *size);
 void JPEGCloseFile(void *handle);

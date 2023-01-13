@@ -6,25 +6,22 @@
 #include "JPEGDraw.h"
 
 
-static TFT_eSPI *_tft;
+
+TFT_eSprite *_sprite; 
 static File f;
 
 
-void JPEGDraw_setup(TFT_eSPI *tft) {
-  _tft = tft;
+void JPEGDraw_setup(TFT_eSprite *sprite) {
+  _sprite = sprite;
 }
 
 
 // Function to draw pixels to the display
 int JPEGDraw(JPEGDRAW *pDraw) {
+  if ( pDraw->y >= _sprite->height() ) return 0;
 
-  // snippet from TJpeg_Decoder
-  // necessary for this library?
-  // if display is rotated should x and width be compared?
-  if ( pDraw->y >= _tft->height() ) return 0;
+  _sprite->pushImage(pDraw->x, pDraw->y, pDraw->iWidth, pDraw->iHeight, pDraw->pPixels);
 
-  //DEBUG_PRINTF("jpeg draw: x,y=%d,%d, cx,cy = %d,%d\n", pDraw->x, pDraw->y, pDraw->iWidth, pDraw->iHeight);
-  _tft->pushRect(pDraw->x, pDraw->y, pDraw->iWidth, pDraw->iHeight, pDraw->pPixels);
   return 1;
 }
 
