@@ -1,7 +1,7 @@
 #ifndef __GIFDRAW__
 #define __GIFDRAW__
 
-void GIFDraw_setup(TFT_eSPI *tft);
+void GIFDraw_setup(TFT_eSprite *tft);
 void GIFDraw(GIFDRAW *pDraw);
 void * GIFOpenFile(const char *fname, int32_t *pSize);
 void GIFCloseFile(void *pHandle);
