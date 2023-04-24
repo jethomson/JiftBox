@@ -5,10 +5,12 @@
 #include <SPI.h>
 #include <TFT_eSPI.h>
 #include <cstring>
-#include <vector>
+
+
 
 #include "GIFDraw.h"
 #include "JPEGDraw.h"
+#include "Overlay.h"
 
 #include "FileManager.h"
 
@@ -31,20 +33,18 @@
  #define DEBUG_PRINTF(...)
 #endif
 
-//using namespace std;
+using namespace std;
 
 //#define DEBUG
 #define MAX_IMAGE_WIDTH 240 // Adjust for your images
 #define NUM_GIF_PLAYS 2
 #define SLEEP_AFTER_NUM_PLAYS_ENABLED false
 #define NUM_PLAYS_TIL_SLEEP 20
-#define BOOT_MENU_DELAY 5 // seconds
+#define BOOT_MENU_DELAY 1 // seconds
 // slideshow images aren't expected to have a delay specified, but gif frames always will if created using ezgif.com
-#define SLIDESHOW_DELAY 3000 // milliseconds
+#define SLIDESHOW_DELAY 9000 // milliseconds
 #define USE_FM true // not using the file manager will cut the program size in half
-//#define NUM_OVERLAYS 50
-#define NUM_OVERLAYS 12
-#define OVERLAY_Y_SPEED 2
+
 
 AnimatedGIF gif;
 JPEGDEC jpeg;
@@ -52,15 +52,7 @@ JPEGDEC jpeg;
 TFT_eSPI tft = TFT_eSPI();
 const uint32_t tpixels = tft.width() * tft.height();
 
-TFT_eSprite spr_bg = TFT_eSprite(&tft); 
-std::vector<TFT_eSprite> overlays(4, TFT_eSprite(&tft));
-uint16_t overlay_w, overlay_h;
-struct overlay_position {
-  int x = 0;
-  int y = 0;
-};
-overlay_position opos[NUM_OVERLAYS];
-
+TFT_eSprite screen_buf = TFT_eSprite(&tft);
 
 struct node {
   std::string imgname;
@@ -68,7 +60,7 @@ struct node {
   node *next;
   node(std::string);
 };
-node::node(std::string _imgname){
+node::node(std::string _imgname) {
     this->imgname = _imgname;
     this->prev = nullptr;
     this->next = nullptr;
@@ -101,12 +93,9 @@ void IRAM_ATTR onTimer() {
   portEXIT_CRITICAL_ISR(&timerMux);
 }
 
-// these are reset when forward or back button is pressed
-// making these global and reseting them in check_buttons() makes for much cleaner code
+// this is set when forward or back button is pressed
+// making it global and reseting it in handle_image() makes for much cleaner code
 int8_t g_skip = 0;
-uint8_t g_num_gif_plays = 0;
-uint32_t g_pm_jpg = 0; // previous millis() for jpg images
-bool g_delay_active = false;
 
 int get_button(uint8_t button_pin);
 void check_skip(void);
@@ -118,11 +107,9 @@ void deep_sleep(void);
 uint16_t find_GCD(uint16_t a, uint16_t b);
 void fm_mode(void);
 void startup_choice(void);
-void decide_image(void);
-void handle_image(std::string imgname);
+uint16_t handle_image(void);
 void handle_gif(std::string imgname);
 void handle_jpg(std::string imgname);
-void handle_overlay(void);
 
 
 
@@ -268,7 +255,6 @@ void espDelay(uint32_t ms) {
 }
 
 void deep_sleep() {
-
   tft.fillScreen(TFT_BLACK);
   digitalWrite(TFT_BL, LOW);
   tft.writecommand(TFT_DISPOFF);
@@ -409,149 +395,78 @@ void startup_choice() {
 }
 
 
-// These read 16- and 32-bit types from the SD card file.
-// BMP data is stored little-endian, Arduino is little-endian too.
-// May need to reverse subscript order if porting elsewhere.
-
-uint16_t read16(fs::File &f) {
-  uint16_t result;
-  ((uint8_t *)&result)[0] = f.read(); // LSB
-  ((uint8_t *)&result)[1] = f.read(); // MSB
-  return result;
-}
-
-uint32_t read32(fs::File &f) {
-  uint32_t result;
-  ((uint8_t *)&result)[0] = f.read(); // LSB
-  ((uint8_t *)&result)[1] = f.read();
-  ((uint8_t *)&result)[2] = f.read();
-  ((uint8_t *)&result)[3] = f.read(); // MSB
-  return result;
-}
-
-void setoverlays(void) {
-
-  //create_file_list(File dir, String parent)
-  //create_file_list(img_root, "/")
-
-  uint8_t overlay_cnt = 0;
-
-  File dir = LittleFS.open("/images/overlays/");
-
-  while (File entry = dir.openNextFile()) {
-    if (!entry.isDirectory()) {
-
-      uint16_t *overlay;
-
-      fs::File bmpFS;
-
-      bmpFS = entry;
-
-      uint32_t seekOffset;
-      uint16_t row, col;
-      uint8_t  r, g, b;
-
-      if (read16(bmpFS) == 0x4D42)
-      {
-        read32(bmpFS);
-        read32(bmpFS);
-        seekOffset = read32(bmpFS);
-        read32(bmpFS);
-        overlay_w = read32(bmpFS);
-        overlay_h = read32(bmpFS);
-
-        if ((read16(bmpFS) == 1) && (read16(bmpFS) == 24) && (read32(bmpFS) == 0)) {
-          bmpFS.seek(seekOffset);
-
-          overlay = new uint16_t[overlay_h*overlay_w];
-          // start from the end because BMP are stored upside down
-          uint16_t* tptr = &overlay[(overlay_h*overlay_w)-1];
-
-          uint16_t padding = (4 - ((overlay_w * 3) & 3)) & 3;
-          uint8_t lineBuffer[overlay_w * 3 + padding];
-
-          for (row = 0; row < overlay_h; row++) {
-            bmpFS.read(lineBuffer, sizeof(lineBuffer));
-            uint8_t* bptr = lineBuffer;
-            // Convert 24 to 16 bit colours
-            for (uint16_t col = 0; col < overlay_w; col++)
-            {
-              b = *bptr++;
-              g = *bptr++;
-              r = *bptr++;
-              *tptr-- = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
-            }
-          }
-        }
-        else Serial.println("BMP format not recognized.");
-      }
-
-      overlays[overlay_cnt].setColorDepth(16);
-      //spr_overlay.createSprite(overlay_w, overlay_h);
-      if (overlays[overlay_cnt].createSprite(overlay_w, overlay_h) == nullptr) {
-        Serial.println("overlay creation failed");
-      }
-      overlays[overlay_cnt].setSwapBytes(true);
-      overlays[overlay_cnt].pushImage(0, 0, overlay_w, overlay_h, overlay);
-
-      bmpFS.close();
-      overlay_cnt++;
-    }
-    entry.close();
-  }
-
-  dir.close();
-}
+uint16_t handle_image(void) {
+  static uint16_t num_played = 0;
+  static uint8_t num_gif_plays = 0;
+  static uint32_t pm_jpg = millis(); // previous millis() for jpg images
 
 
-
-void decide_image(void) {
   if (g_skip < 0) {
     g_skip = 0;
-    g_num_gif_plays = 0;
+    num_gif_plays = 0;
     curr_node = curr_node->prev;
   }
   else if (g_skip > 0) {
     g_skip = 0;
-    g_num_gif_plays = 0;
+    num_gif_plays = 0;
     curr_node = curr_node->next;
   }
-  else if (g_num_gif_plays == NUM_GIF_PLAYS || (millis() - g_pm_jpg) > SLIDESHOW_DELAY) {
-    g_num_gif_plays = 0;
-    g_pm_jpg = millis();
+  else if (num_gif_plays >= NUM_GIF_PLAYS || (millis() - pm_jpg) > SLIDESHOW_DELAY) {
+    num_gif_plays = 0;
+    pm_jpg = millis();
     curr_node = curr_node->next;
+    num_played++;
   }
-}
+  // else do nothing and continue using the current image
 
-
-void handle_image(std::string imgname) {
+  std::string imgname = curr_node->imgname;
   String imgname_lc = imgname.c_str();
   imgname_lc.toLowerCase();
   if (imgname_lc.endsWith(".gif")) {
     handle_gif(imgname);
-    g_num_gif_plays++;
+    num_gif_plays++;
+    pm_jpg = millis();
   }
   else if (imgname_lc.endsWith(".jpg") || imgname_lc.endsWith(".jpeg")) {
-    //tft.fillScreen(TFT_BLACK);
     handle_jpg(imgname);
-    //spr_bg.pushSprite(0, 0);
-    handle_overlay();
-    //g_pm_jpg = millis();
-    //g_delay_active = true;
+    handle_overlay(imgname, &screen_buf);
+    screen_buf.pushSprite(0, 0);
   }
+
+  return num_played;
 }
 
+
 void handle_gif(std::string imgname) {
+  //long lTime;
+
+  int dt = 0;
+  int delayMilliseconds = 0;
+
   if (gif.open((char *)imgname.c_str(), GIFOpenFile, GIFCloseFile, GIFReadFile, GIFSeekFile, GIFDraw)) {
     tft.startWrite();
-    while (gif.playFrame(true, NULL)) {    
+    //lTime = micros();
+    dt = millis();
+    while (gif.playFrame(false, &delayMilliseconds)) {
+      handle_overlay(imgname, &screen_buf);
+      screen_buf.pushSprite(0, 0);
       check_skip();  
       if (g_skip != 0) {
         break;
       }
+
+      // since overlays take time it is better we handle the delay here instead of letting playFrame() do it.
+      dt = millis() - dt;
+      if (dt < delayMilliseconds)
+        delay(delayMilliseconds - dt);
+        dt = millis();
     }
     gif.close();
     tft.endWrite(); // Release TFT chip select for other SPI devices
+
+    //lTime = micros() - lTime;
+    //Serial.print((int)lTime, DEC);
+    //Serial.println(" microseconds");
   }
 }
 
@@ -626,7 +541,7 @@ void handle_jpg(std::string imgname) {
       DEBUG_PRINTLN(tft.getRotation());
     }
 
-    // image width would need to be over 2 billion pixels wide for this to underflow
+    // image width would need to be over 2 billion pixels wide for this to underflow if unsigned is used
     int x_offset = (tft.width() - jw)/2;
     //if (x_offset < 0) {
     //  x_offset = 0;
@@ -636,15 +551,16 @@ void handle_jpg(std::string imgname) {
     //  y_offset = 0;
     //}
 
-    jpixels = jw*jh;
-    if (jpixels < tpixels) {
-      //this prevents the previous image from being shown if this image is smaller than the display.
+
+    if (jw < tft.width() || jh < tft.height()) {
+      //this prevents the previous image from being shown in the background if the current image is smaller than the display.
       //do not want to do this for every image because it causes a flicker when switching images.
       tft.fillScreen(TFT_BLACK);
     }
 
+    jpixels = jw*jh; // this is now the number of pixels in the scaled image
     //if (jpixels <= 2*tpixels) {
-      // if the number of pixels of the scaled image is more than twice the display pixels, then do not bother showing the image.
+      // show jpeg if the number of pixels of the scaled image is less than twice the display pixels; otherwise do not bother showing the image.
       jpeg.decode(x_offset, y_offset, iOptions);
       DEBUG_PRINT("         displayed: ");
       DEBUG_PRINTLN(imgname.c_str());
@@ -652,78 +568,6 @@ void handle_jpg(std::string imgname) {
     jpeg.close();
   }
 }
-
-void handle_overlay(void) {
-  static int wind_cnt = 0;
-  static int wind = 0;
-  static int y_dir = 1;
-  
-  //yield();
-  //espDelay(100);
-
-  //TFT_eSprite spr_copy = TFT_eSprite(&tft);
-  //spr_copy.setColorDepth(16);
-  //spr_copy.createSprite(tft.width(), tft.height());
-  //spr_bg.pushToSprite(&spr_copy, 0, 0);
-  //spr_bg.pushImage(0, 0, tft.width(), tft.height(), bg);
-
-  //if (draw_overlays) {
-  if (true) {
-    for (int i = 0; i < NUM_OVERLAYS; i++) {
-      //spr_bg.print("*");
-      //spr_bg.drawChar('*', local_x, local_y, 2);
-      //spr_bg.drawString(":)", local_x+30, local_y+20, 2);
-      // drawString will use a font if loaded
-      //spr_bg.drawString("*", local_x, local_y);
-
-      //TFT_TRANSPARENT 0x0120 // This is actually a dark green
-      //0x0120 == RGB: 0, 36, 0 == #002400
-      //spr_overlay.pushToSprite(&spr_bg, opos[i].x, opos[i].y, TFT_TRANSPARENT);
-      overlays[i % overlays.size()].pushToSprite(&spr_bg, opos[i].x, opos[i].y, TFT_TRANSPARENT);
-    }
-  }
-
-  spr_bg.pushSprite(0, 0);
-  //spr_overlay.pushSprite(0, 0);
-
-  //spr_copy.deleteSprite();
-
-  wind_cnt++;
-  if (wind_cnt > 50) {
-    wind_cnt = 0;
-    wind = random(-10, 11);
-    if (random(0, 2)) {
-      y_dir = -1*y_dir;
-    }
-  }
-
-  for (int i = 0; i < NUM_OVERLAYS; i++) {
-    int jitter = random(-2, 3);
-    opos[i].x = opos[i].x + jitter + wind;
-    opos[i].y = opos[i].y + y_dir*OVERLAY_Y_SPEED;
-    //opos[i].x = opos[i].x - 1;
-    //opos[i].y = opos[i].y + 1;
-    // use 20 as a fudge factor so character is off the screen before we reset its location
-    if (opos[i].x + overlay_w < -20) {
-      opos[i].x = tft.width();
-    }
-    else if (opos[i].x > tft.width() + 20) {
-      opos[i].x = -overlay_w;
-    }
-
-    if (opos[i].y > tft.height() + 20) {
-      if (y_dir > 0) {
-        opos[i].y = random(-20-overlay_h, -overlay_h);
-      }
-    }
-    else if (opos[i].y + overlay_h < -20) {
-      if (y_dir < 0) {
-        opos[i].y = tft.height() + random(0, 20);
-      }
-    }
-  }
-}
-
 
 void setup() {
 #ifdef DEBUG_CONSOLE
@@ -790,62 +634,32 @@ void setup() {
   tft.setRotation(1);
 
 
-  spr_bg.setColorDepth(16);
-  spr_bg.createSprite(tft.width(), tft.height());
-  if (spr_bg.createSprite(tft.width(), tft.height()) == nullptr) {
-    DEBUG_PRINTLN("Setting background failed!");
+  screen_buf.setColorDepth(16);
+  screen_buf.createSprite(tft.width(), tft.height());
+  //if (screen_buf.createSprite(tft.width(), tft.height()) == nullptr) {
+  if (!screen_buf.created()) {
+    DEBUG_PRINTLN("Setting screen_buf failed!");
     while(1) yield();
   }
   
-  
-  setoverlays();
+  overlay_setup(&tft);
 
-  for (int i = 0; i < NUM_OVERLAYS; i++) {
-    int xlb = i*tft.width()/NUM_OVERLAYS;
-    int xub = (i+1)*tft.width()/NUM_OVERLAYS;
-    //int ylb = i*tft.height()/NUM_OVERLAYS;
-    //int yub = (i+1)*tft.height()/NUM_OVERLAYS;
-    
-    opos[i].x = random(xlb, xub);
-    opos[i].y = random(-tft.height(), -9);
+  GIFDraw_setup(&screen_buf);
+  JPEGDraw_setup(&screen_buf);
 
-    //opos[i].x = 100;
-    //opos[i].y = 40;
-
-  }
-  //tft.fillScreen(TFT_TRANSPARENT);
-
-  GIFDraw_setup(&tft);
-  JPEGDraw_setup(&spr_bg);
-
-  gif.begin(BIG_ENDIAN_PIXELS);
-  
+  //gif.begin(BIG_ENDIAN_PIXELS);
+  gif.begin(GIF_PALETTE_RGB565_BE);
 }
 
 void loop() {
   DEBUG_PRINTLN(esp_get_free_heap_size());
 
   static uint16_t num_played = 0;
-  std::string imgname;
 
-  /*
   check_skip();
-  bool play = decide_image();
-  if (play) {
-    imgname = curr_node->imgname;
-    handle_image(imgname.c_str());
-    num_played++;
-  }
-  */
-  check_skip();
-  decide_image();
-  imgname = curr_node->imgname;
-  Serial.println(imgname.c_str());
-  handle_image(imgname.c_str());
-  num_played++;
+  num_played = handle_image();
 
-  // TODO: num_plays is broken after adding overlays. counts up too fast. need to fix.
-  if (SLEEP_AFTER_NUM_PLAYS_ENABLED && num_played == NUM_PLAYS_TIL_SLEEP) {
+  if (SLEEP_AFTER_NUM_PLAYS_ENABLED && num_played >= NUM_PLAYS_TIL_SLEEP) {
     deep_sleep();
   }
 }
