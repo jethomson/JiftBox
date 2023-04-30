@@ -67,6 +67,55 @@ public:
 };
 
 
+void handle_file_upload(AsyncWebServerRequest *request, const String &filename, size_t index, uint8_t *data, size_t len, bool final) {
+
+  //ESP.wdtDisable();
+
+  static File fs_file; //new file to be written to the filesystem
+
+  if (!index) {
+    /*
+    size_t filesize = 0;
+
+    // contentLength() includes the count of bytes in bin file plus the bytes in the header and footer.
+    // these extra bytes will cause the writing of a filesystem to fail
+    // so use a separate form input on the upload page to send the actual filesize alongside the bin file
+    if (request->hasParam("filesize", true)) {
+      filesize = request->getParam("filesize", true)->value().toInt();
+    }
+    else {
+      // this doesn't work for spiffs or littlefs 
+      filesize = request->contentLength();
+    }
+    */
+
+    DEBUG_PRINT("if index: ");
+
+    // previous file should not still be open
+    if (fs_file) {
+      delay(1); 
+      fs_file.close();
+    }
+
+    fs_file = LittleFS.open(filename, "w");
+  }
+
+  for(size_t i = 0; i < len; i++){
+    fs_file.write(data[i]);
+  }
+
+  if (final) {
+    if (fs_file) {
+      delay(1); 
+      fs_file.close();
+    }
+
+    DEBUG_PRINTF("upload complete: %s, %u B\n", filename.c_str(), index+len);
+    DEBUG_CONSOLE.flush();
+  }
+
+}
+
 void handle_folder_upload(AsyncWebServerRequest *request, const String &param_path, size_t index, uint8_t *data, size_t len, bool final) {
 
   //ESP.wdtDisable();
@@ -170,8 +219,9 @@ void create_dirs(String path) {
   }
 }
 
-String file_list;
 String file_list_tmp;
+String file_list;
+String overlay_list;
 // NOTE: an empty folder will not be added when building a littlefs image.
 // Empty folders will not be created when uploaded either.
 void list_files(File dir, String parent) {
@@ -218,6 +268,14 @@ void handle_file_list(void) {
       img_root.close();
     }
     file_list = file_list_tmp;
+    file_list_tmp = "";
+
+    File overlay_root = LittleFS.open("/overlays");
+    if (overlay_root) {
+      list_files(overlay_root, "/");
+      overlay_root.close();
+    }
+    overlay_list = file_list_tmp;
     file_list_tmp = "";
   }
 }
@@ -418,25 +476,35 @@ void web_server_initiate(void) {
       request->send(LittleFS, "/html/network.html");
     });
 
-    web_server.on("/network.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-      request->send(LittleFS, "/html/network.html");
-    });
-
     web_server.on("/overlay.html", HTTP_GET, [](AsyncWebServerRequest *request) {
       //String overlay_url = "/html/overlay.html?display_width=";
       //overlay_url + String(width) + "&display_height=" + String(height);
       request->send(LittleFS, "/html/overlay.html", String(), false, processor);
     });
 
+    web_server.on("/overlay_assignment.json", HTTP_GET, [](AsyncWebServerRequest *request) {
+      request->send(LittleFS, "/overlay_assignment.json");
+    });
 
     //OTA update via web page
     //AsyncCallbackWebHandler& on(const char* uri, WebRequestMethodComposite method, ArRequestHandlerFunction onRequest, ArUploadHandlerFunction onUpload);
-    web_server.on("/upload", HTTP_POST, [](AsyncWebServerRequest *request) {
+    web_server.on("/folder_upload", HTTP_POST, [](AsyncWebServerRequest *request) {
       request->redirect("/upload.html");
     }, handle_folder_upload);
 
+    web_server.on("/file_upload", HTTP_POST, [](AsyncWebServerRequest *request) {
+      request->send(200, "text/plain", "file_upload");
+    }, handle_file_upload);
+
+    //web_server.on("/file_upload", HTTP_POST, [](AsyncWebServerRequest *request) {}, handle_file_upload);
+
+
     web_server.on("/files", HTTP_GET, [](AsyncWebServerRequest *request) {
       request->send(200, "text/plain", file_list);
+    });
+
+    web_server.on("/overlays", HTTP_GET, [](AsyncWebServerRequest *request) {
+      request->send(200, "text/plain", overlay_list);
     });
 
     web_server.on("/delete", HTTP_POST, [](AsyncWebServerRequest *request) {
