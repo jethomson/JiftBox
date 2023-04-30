@@ -5,7 +5,7 @@
 #include <SPI.h>
 #include <TFT_eSPI.h>
 
-#define MAX_SPRITES 4
+#define MAX_OVERLAY_FILES 4
 
 #define OVERLAY_Y_SPEED 2
 

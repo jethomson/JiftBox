@@ -9,7 +9,7 @@ using namespace std;
 
 
 TFT_eSPI *_tft;
-TFT_eSprite *sprites[MAX_SPRITES];
+vector<std::unique_ptr<TFT_eSprite>> sprites;
 
 bool load_overlays = false;
 string overlay_assignments_string;
@@ -38,17 +38,20 @@ uint32_t read32(fs::File &f) {
 }
 
 //TODO: handle "[ 61539][E][vfs_api.cpp:29] open(): No Overlay does not start with /"
-void load_sprites(vector<string> overlay_names) {
+//TODO: delete sprites before creating new ones
+void load_sprites(vector<string> overlay_fnames) {
+  sprites.clear();
+
   if (load_overlays) {
     uint8_t sprite_cnt = 0;
 
-    //File dir = LittleFS.open("/overlays");
-    //while (File entry = dir.openNextFile()) {
-
-    for (uint8_t i = 0; i < overlay_names.size(); i++) {
-      File entry = LittleFS.open(overlay_names[i].c_str());
-      if (!entry.isDirectory() && sprite_cnt < MAX_SPRITES) {
-
+    for (uint8_t i = 0; i < overlay_fnames.size(); i++) {
+      Serial.println(overlay_fnames[i].c_str());
+      if (overlay_fnames[i] == "No Overlay") {
+        continue;
+      }
+      File entry = LittleFS.open(overlay_fnames[i].c_str());
+      if (!entry.isDirectory() && sprite_cnt < MAX_OVERLAY_FILES) {
         uint16_t *data;
 
         uint32_t seekOffset;
@@ -88,23 +91,23 @@ void load_sprites(vector<string> overlay_names) {
           }
           else Serial.println("BMP format not recognized.");
         }
+        sprites.push_back(std::unique_ptr<TFT_eSprite>(new TFT_eSprite(_tft)));
+        //sprites.push_back(std::make_unique<TFT_eSprite>(_tft));
 
-        TFT_eSprite *spr = new TFT_eSprite(_tft); 
-        spr->setColorDepth(16);
-        spr->createSprite(bmp_w, bmp_h);
-        if (!spr->created()) {
+        sprites[sprite_cnt]->setColorDepth(16);
+        sprites[sprite_cnt]->createSprite(bmp_w, bmp_h);
+        if (!sprites[sprite_cnt]->created()) {
           Serial.println("Overlay creation failed!");
         }
-        spr->setSwapBytes(true);
-        spr->pushImage(0, 0, bmp_w, bmp_h, data);
-        
-        sprites[sprite_cnt] = spr;
+        sprites[sprite_cnt]->setSwapBytes(true);
+        // pushImage() makes a copy of data, so data can be deleted.
+        sprites[sprite_cnt]->pushImage(0, 0, bmp_w, bmp_h, data);
+        delete data;
         
         sprite_cnt++;
       }
       entry.close();
     }
-    //dir.close();
   }
 }
 
@@ -125,8 +128,8 @@ void overlay_setup(TFT_eSPI *tft) {
 }
 
 
-TFT_eSprite* get_sprite(uint8_t si) {
-  return sprites[si];
+TFT_eSprite& get_sprite(uint8_t si) {
+  return *sprites[si];
 }
 
 
@@ -153,35 +156,35 @@ void handle_overlay(std::string imgname, TFT_eSprite* background) {
   static int wind = 0;
   static int y_dir = 1;
 
-  static vector<string> overlay_names;
-  static vector<string> overlay_cnts;
+  struct overlay_attributes {
+    vector<string> filenames;
+    vector<string> num_instances;
+  };
+
+  static overlay_attributes attributes;
+
   static string prev_imgname;
   static vector<overlay> overlays;  
-  //static uint16_t num_overlays;
 
-  //string imgname = "bokeh_no_transparency.gif";  
   if(prev_imgname != imgname) {
+  // this section only runs when the next image is loaded
     prev_imgname = imgname;
-    overlay_cnts.clear();
+    attributes.filenames.clear();
+    attributes.num_instances.clear();
     overlays.clear();
 
     size_t match_start = 0;
     size_t match_end = 0;
-    string overlay_dict;
+    string attributes_string;
     if ((match_start = overlay_assignments_string.find(imgname)) != string::npos) {
       if ((match_end = overlay_assignments_string.find("}]", match_start)) != string::npos) {
-        overlay_dict = overlay_assignments_string.substr(match_start, match_end-match_start+2); // use +2 to include }]
-        //Serial.println(overlay_dict.c_str());
+        attributes_string = overlay_assignments_string.substr(match_start, match_end-match_start+2); // use +2 to include }]
 
         size_t pos = 0;
         uint8_t i = 0;
-        while((pos = simple_JSON_parse(overlay_dict, "file", pos, overlay_names)) != string::npos);
+        while((pos = simple_JSON_parse(attributes_string, "file", pos, attributes.filenames)) != string::npos);
         pos = 0;
-        while((pos = simple_JSON_parse(overlay_dict, "count", pos, overlay_cnts)) != string::npos);
-        //for (unsigned int i = 0; i < overlay_cnts.size(); i++) {
-        //  Serial.println(overlay_names[i].c_str());
-        //  Serial.println(overlay_cnts[i].c_str());
-        //}
+        while((pos = simple_JSON_parse(attributes_string, "count", pos, attributes.num_instances)) != string::npos);
       }
       else {
         //bad format
@@ -189,20 +192,21 @@ void handle_overlay(std::string imgname, TFT_eSprite* background) {
       }
     }
     else {
-      //Serial.print(imgname.c_str());
-      //Serial.println(" not found in json file.");
       return;
     }
-    
-    load_sprites(overlay_names);
-    uint16_t num_overlays = 0;
-    for (uint8_t i = 0; i < overlay_cnts.size(); i++) {
-      num_overlays += stoi(overlay_cnts[i]);
+
+    load_sprites(attributes.filenames);
+
+    Serial.println(esp_get_free_heap_size());
+
+    uint16_t total_num_overlays = 0;
+    for (uint8_t ni = 0; ni < attributes.filenames.size(); ni++) {
+      total_num_overlays += stoi(attributes.num_instances[ni]);
     }
-    if (num_overlays == 0) {
+    if (total_num_overlays == 0) {
       return;
     }
-    overlays.resize(num_overlays);
+    overlays.resize(total_num_overlays);
     
     uint16_t ri[overlays.size()];
     for (uint16_t i = 0; i < overlays.size(); i++) {
@@ -211,10 +215,13 @@ void handle_overlay(std::string imgname, TFT_eSprite* background) {
     random_shuffle(&ri[0], &ri[overlays.size()-1]);
     
     // set initial positions of overlays
+    // i: spans the entire overlay vector
+    //ni: spans the number of overlay image filenames. this will always be less than or equal to MAX_OVERLAY_FILES.
+    //    since sprites is created using attributes.filenames their lengths will be the same and si will index the sprite containing the image whose filename is indexed by ni when si equals ni
+    // j: spans the number of overlay instances for a particular overlay image
     uint16_t i = 0;
-    for (uint8_t si = 0; si < overlay_cnts.size(); si++) {
-      uint8_t cnt = stoi(overlay_cnts[si]);
-      //Serial.println(cnt);
+    for (uint8_t ni = 0; ni < attributes.filenames.size(); ni++) {
+      uint8_t cnt = stoi(attributes.num_instances[ni]);
       for (uint8_t j = 0; j < cnt; j++) {
         int xlb = j*_tft->width()/cnt;
         int xub = (j+1)*_tft->width()/cnt;
@@ -222,8 +229,8 @@ void handle_overlay(std::string imgname, TFT_eSprite* background) {
         //int yub = (si+1)*_tft->height()/overlay_cnts[si];
 
         // giving sprites random indices within the overlays vector will result in a random z height
-        // that is to all instances of one type of sprite will not always be below all instances of another type of sprite.
-        overlays[ri[i]].si = si;
+        // so that all instances of one type of sprite will not always be below all instances of another type of sprite.
+        overlays[ri[i]].si = ni;
         overlays[ri[i]].x = random(xlb, xub);
         overlays[ri[i]].y = random(-_tft->height(), -9);
 
@@ -235,16 +242,19 @@ void handle_overlay(std::string imgname, TFT_eSprite* background) {
     }
   }
   
-  uint16_t i = 0;
-  for (uint8_t si = 0; si < overlay_cnts.size(); si++) {
-    uint8_t cnt = stoi(overlay_cnts[si]);
-    //Serial.println(cnt);
-    for (uint8_t j = 0; j < cnt; j++) {
+  // below here runs every time
 
+  // i: spans the entire overlay vector
+  //ni: spans the number of overlay image filenames. this will always be less than or equal to MAX_OVERLAY_FILES.
+  //    since sprites is created using attributes.filenames their lengths will be the same and si will index the sprite containing the image whose filename is indexed by ni when si equals ni
+  // j: spans the number of overlay instances for a particular overlay image
+  uint16_t i = 0;
+  for (uint8_t ni = 0; ni < attributes.filenames.size(); ni++) {
+    for (uint8_t j = 0; j < stoi(attributes.num_instances[ni]); j++) {
       //TFT_TRANSPARENT 0x0120 // This is actually a dark green
       //0x0120 == RGB: 0, 36, 0 == #002400
-      TFT_eSprite *sprite = get_sprite(overlays[i].si); 
-      sprite->pushToSprite(background, overlays[i].x, overlays[i].y, TFT_TRANSPARENT);
+      TFT_eSprite &sprite = get_sprite(overlays[i].si); 
+      sprite.pushToSprite(background, overlays[i].x, overlays[i].y, TFT_TRANSPARENT);
 
 
       int jitter = random(-2, 3);
@@ -253,19 +263,19 @@ void handle_overlay(std::string imgname, TFT_eSprite* background) {
       //overlays[i].x = overlays[i].x - 1;
       //overlays[i].y = overlays[i].y + 1;
       // use 20 as a fudge factor so character is off the screen before we reset its location
-      if (overlays[i].x + sprite->width() < -20) {
+      if (overlays[i].x + sprite.width() < -20) {
         overlays[i].x = _tft->width();
       }
       else if (overlays[i].x > _tft->width() + 20) {
-        overlays[i].x = -sprite->width();
+        overlays[i].x = -sprite.width();
       }
 
       if (overlays[i].y > _tft->height() + 20) {
         if (y_dir > 0) {
-          overlays[i].y = random(-20-sprite->height(), -sprite->height());
+          overlays[i].y = random(-20-sprite.height(), -sprite.height());
         }
       }
-      else if (overlays[i].y + sprite->height() < -20) {
+      else if (overlays[i].y + sprite.height() < -20) {
         if (y_dir < 0) {
           overlays[i].y = _tft->height() + random(0, 20);
         }
