@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en" class="">
+<head>
+	<meta charset='utf-8'>
+	<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+	<title>Assign Overlays</title>
+	<style>
+	
+	:root {
+		--switch-color: white;
+	}
+	
+	body {
+		text-align: center;
+		font-family: verdana, sans-serif;
+		color: white;
+		background: black;
+	}
+	
+	.grid-container {
+		display: grid;
+		grid-template-columns: auto auto;
+		grid-row-gap: 5px;
+		width: 95vw;
+		/*height: 85vh;*/
+		max-width: 600px;
+		max-height: 800px;
+  		align-items: center;
+  		justify-content: center;
+		margin: 0 auto;
+	}
+	.grid-item-form {
+		display: grid;
+  		align-items: center;
+  		justify-content: center;
+	}
+	.grid-item-left {
+		width: 100%;
+		display: inline-flex; /*prevent div from being slightly larger on the bottom than the switch */
+		/*background: red;*/
+	}
+	.grid-item-right {
+		/*font-size: 2.3rem;
+		font-weight:bold;*/
+		color: white;
+		text-align: left;
+		width: 100%;
+		white-space: nowrap;
+		/*background: red;*/
+	}
+	.grid-item-button {
+		grid-column: 1 / span 2;
+		font-weight:bold;
+		color: white;
+		text-align: center;
+		width: 100%;
+  		align-items: center;
+  		justify-content: center;
+	}
+	.grid-item:active {
+		background: #0e70a4;
+	}
+	.span-regular-file {
+		padding-left: 1em;
+	}
+	
+	button {
+		border: 0;
+		border-radius: 0.3rem;
+		background: #1fa3ec;
+		color: #faffff;
+		line-height: 2.4rem;
+		font-size: 1.2rem;
+		width: 100%;
+		-webkit-transition-duration: 0.4s;
+		transition-duration: 0.4s;
+		cursor: pointer;
+	}
+	
+	button:hover {
+		background: #0e70a4;
+	}
+	
+	.bred {
+		background: #d43535;
+	}
+	
+	.bred:hover {
+		background: #931f1f;
+	}
+	
+	.bgrn {
+		background: #47c266;
+	}
+	
+	.bgrn:hover {
+		background: #5aaf6f;
+	}
+
+	a:link {
+		color: inherit;
+		text-decoration: none;
+	}
+
+	a:visited {
+		color: inherit;
+		text-decoration: none;
+	}
+
+	a:hover {
+		color: yellow;
+		text-decoration: none;
+	}
+
+	a:active {
+		color: inherit;
+		text-decoration: none;
+	}
+	
+
+
+	</style>
+</head>
+<body>
+
+
+	<h3>Assign overlays to images.</h3>
+	<div id="maindiv" class="grid-container" style="visibility: hidden">
+		<div class="grid-item-form" id="assign_form" action="upload" method="post">
+	  	<div id="insert_file_list_before_here" style="display: none"></div>
+
+	  	<div class="grid-item-button">
+			<button id="upload_json" onclick="upload_json()">Update Overlays</button>
+		</div>
+		</div>
+		
+	  	<div id="main_button" class="grid-item-button">
+			<a href="/"><button name="">Main Menu</button></a>
+		</div>
+
+	  	<!--div class="grid-item-button" style="display: none"-->
+	  	<!--
+	  	<div class="grid-item-button">
+			<form action="select_bin" method="get"><button name="">Select Bin File</button></form>
+		</div>
+	  	<div class="grid-item-button">
+			<form action="restart" method="get" onsubmit="return confirm(&quot;Confirm Restart&quot;);"><button name="" class="button bred">Restart</button></form>
+		</div>
+		-->
+	</div>
+
+
+<script>
+var g_overlays = [];
+
+function insert_file_list(responseText) {
+	var maindiv = document.getElementById("maindiv");
+	var form = document.getElementById("assign_form");
+	
+	//var insert_point = document.getElementById("insert_file_list_here");
+	//var content = document.createTextNode(responseText);
+	//console.log(responseText);
+	//insert_point.appendChild(content);
+	
+	var insert_point = document.getElementById("insert_file_list_before_here");
+	
+
+	if (responseText != "") {
+		var files = responseText.split('\n');
+		for (var i in files) {
+			if (files[i] != "" && !files[i].endsWith('/')) {
+				var filename = files[i];
+				filename = filename.slice(0, filename.lastIndexOf('\t'));
+				var attributes_div = document.createElement("div");
+				attributes_div.classList.add("grid-item-left");
+			
+				for (var onum = 0; onum < 3; onum++) {
+					var overlay_select = document.createElement("select");
+					//overlay_select.setAttribute("type", "select");
+					overlay_select.setAttribute("id", 'overlay_select_'+onum+'_'+filename);
+					overlay_select.setAttribute("name", 'overlay_select_'+onum+'_'+filename);
+					overlay_select.setAttribute("data-filename", filename);
+					overlay_select.setAttribute("data-index", onum);
+
+					var option = document.createElement("option");
+					option.text = "No Overlay";
+					overlay_select.add(option);
+					for (let j = 0; j < g_overlays.length; j++) {
+						var option = document.createElement("option");
+						option.value = g_overlays[j]; 
+						option.text = g_overlays[j].replace('/overlays/', '');
+						overlay_select.add(option);
+					}
+
+					var overlay_cnt = document.createElement("input");
+					overlay_cnt.setAttribute("type", "number");
+					overlay_cnt.style.width = "40px";
+					overlay_cnt.setAttribute("quantity", 1);
+					overlay_cnt.setAttribute("min", 0);
+					overlay_cnt.setAttribute("max", 50);
+					overlay_cnt.setAttribute("value", 0);
+					overlay_cnt.setAttribute("id", 'overlay_count_'+onum+'_'+filename);
+					overlay_cnt.setAttribute("name", 'overlay_count_'+onum+'_'+filename);
+
+					
+					var dir_select = document.createElement("select");
+					dir_select.setAttribute("id", 'overlay_dir_'+onum+'_'+filename);
+					dir_select.setAttribute("name", 'overlay_dir_'+onum+'_'+filename);
+					
+					var option = document.createElement("option");
+					option.text = "fall";
+					option.value = "fall";
+					dir_select.add(option);
+					var option = document.createElement("option");
+					option.text = "rise";
+					option.value = "rise";
+					dir_select.add(option);
+					var option = document.createElement("option");
+					option.text = "forward";
+					option.value = "forward";
+					dir_select.add(option);
+					var option = document.createElement("option");
+					option.text = "backward";
+					option.value = "backward";
+					dir_select.add(option);
+
+					
+					var wind_speed = document.createElement("input");
+					wind_speed.setAttribute("type", "number");
+					wind_speed.style.width = "40px";
+					wind_speed.setAttribute("quantity", 1);
+					wind_speed.setAttribute("min", 0);
+					wind_speed.setAttribute("max", 50);
+					wind_speed.setAttribute("value", 0);
+					wind_speed.setAttribute("id", 'overlay_wind_'+onum+'_'+filename);
+					wind_speed.setAttribute("name", 'overlay_wind_'+onum+'_'+filename);
+					//wind_speed.setAttribute("data-filename", filename);
+
+					attributes_div.appendChild(overlay_select);
+					attributes_div.appendChild(overlay_cnt);
+					attributes_div.appendChild(dir_select);
+					attributes_div.appendChild(wind_speed);
+				}
+
+				var label_div = document.createElement("div");
+				var label_span = document.createElement("span");
+
+				var label_text = filename
+				if (!files[i].endsWith('/')) {
+					//label_text = '├──'+label_text;
+					//label_text = '\\___'+label_text;
+					label_span.classList.add("span-regular-file");
+				}
+			
+				label_div.classList.add("grid-item-right");
+				//label_span.setAttribute("text", label_text);
+				//label_span.setAttribute("id", "smart_text_"+devices[d].text);
+			
+
+				label_span.appendChild(document.createTextNode(label_text));
+				label_div.appendChild(label_span);
+			
+				form.insertBefore(attributes_div, insert_point);
+				form.insertBefore(label_div, insert_point);
+			}
+		}
+	}
+	else {
+		var not_found_div = document.createElement("div");
+		not_found_div.innerText = "No files found.";
+		not_found_div.style = "color: white; text-align: center; width: 100%;"
+		form.insertBefore(not_found_div, insert_point);
+	}
+	
+	maindiv.style.visibility = "visible"; 
+}
+
+function load_json(responseText) {
+	let overlay_assignments = JSON.parse(responseText);
+	let el_overlays = document.querySelectorAll('[id^="overlay_select_"]');
+	let el_counts = document.querySelectorAll('[id^="overlay_count_"]');
+	let el_directions = document.querySelectorAll('[id^="overlay_dir_"]');
+	let el_winds = document.querySelectorAll('[id^="overlay_wind_"]');
+	
+	overlays_dict = {};
+	for (let i = 0; i < el_overlays.length; i++) {
+		let el_overlay = el_overlays[i];
+		let el_count = el_counts[i];
+		let el_direction = el_directions[i];
+		let el_wind = el_winds[i];
+		
+		let filename = el_overlay.getAttribute('data-filename');
+		let index = parseInt(el_overlay.getAttribute('data-index'));
+
+		if (filename in overlay_assignments) {
+			for (let j = 0; j < el_overlay.options.length; j++) {
+				// cannot directly set value because we cannot be sure the overlay file assigned in the json still exists in /overlays/
+				// so loop through all of the options and set the overlay and attributes if the file in the json matches an existing overlay file option
+				if (el_overlay.options[j].value === overlay_assignments[filename][index]['file']) {
+					el_overlay.selectedIndex = j;
+					value = overlay_assignments[filename][index]['count'];
+					if (typeof value !== 'undefined') {
+						el_count.value = parseInt(value);
+					}
+					value = overlay_assignments[filename][index]['direction'];
+					if (typeof value !== 'undefined') {
+						el_direction.value = value;
+					}
+					value = parseInt(overlay_assignments[filename][index]['wind']);
+					if (typeof value !== 'undefined') {
+						el_wind.value = parseInt(value);
+					}
+					break;
+				}
+			}
+		}
+	}
+}
+
+function pull_json() {
+	var xmlhttp = new XMLHttpRequest();
+	xmlhttp.onreadystatechange = function() {
+		if (this.readyState == 4 && this.status == 200) {
+			console.log("-----");
+			console.log(this.responseText);
+			console.log("-----");
+			load_json(this.responseText);
+		}
+	};
+
+	xmlhttp.onerror   = function() {console.log("onerror")};
+	xmlhttp.onabort   = function() {console.log("onabort")};
+	xmlhttp.ontimeout = function() {console.log("ontimeout")};
+
+	url = "/overlay_assignment.json";
+	if (window.location.protocol == "file:") {
+		// makes for easier debugging.
+		// if html is loaded locally, can see the results of editing more easily.
+		// otherwise every change to html would require uploading new version to microcontroller.
+		//url = "http://192.168.1.202"+url;
+		url = "http://jiftbox.local"+url;
+	}
+	xmlhttp.open("GET", url, true);
+
+	//xmlhttp.timeout = 5000;
+	xmlhttp.send();
+}
+
+
+function pull_overlay_list() {
+	var xmlhttp = new XMLHttpRequest();
+	xmlhttp.onreadystatechange = function() {
+		if (this.readyState == 4 && this.status == 200) {
+			console.log("-----");
+			console.log(this.responseText);
+			console.log("-----");
+			if (this.responseText != "") {
+				var files = this.responseText.split('\n');
+				for (var i in files) {
+					if (files[i] != "" && !files[i].endsWith('/')) {
+						var filename = files[i];
+						g_overlays.push(filename.slice(0, filename.lastIndexOf('\t')));
+					}
+				}
+			}
+		}
+	};
+
+	xmlhttp.onerror   = function() {console.log("onerror")};
+	xmlhttp.onabort   = function() {console.log("onabort")};
+	xmlhttp.ontimeout = function() {console.log("ontimeout")};
+
+	url = "/overlays";
+	if (window.location.protocol == "file:") {
+		// makes for easier debugging.
+		// if html is loaded locally, can see the results of editing more easily.
+		// otherwise every change to html would require uploading new version to microcontroller.
+		//url = "http://192.168.1.202"+url;
+		url = "http://jiftbox.local"+url;
+	}
+	xmlhttp.open("GET", url, true);
+
+	//xmlhttp.timeout = 5000;
+	xmlhttp.send();
+}
+
+function pull_file_list() {
+	var xmlhttp = new XMLHttpRequest();
+	xmlhttp.onreadystatechange = function() {
+		if (this.readyState == 4 && this.status == 200) {
+			console.log("-----");
+			console.log(this.responseText);
+			console.log("-----");
+			insert_file_list(this.responseText);
+		}
+	};
+
+	xmlhttp.onerror   = function() {console.log("onerror")};
+	xmlhttp.onabort   = function() {console.log("onabort")};
+	xmlhttp.ontimeout = function() {console.log("ontimeout")};
+
+	url = "/files";
+	if (window.location.protocol == "file:") {
+		// makes for easier debugging.
+		// if html is loaded locally, can see the results of editing more easily.
+		// otherwise every change to html would require uploading new version to microcontroller.
+		//url = "http://192.168.1.202"+url;
+		url = "http://jiftbox.local"+url;
+	}
+	xmlhttp.open("GET", url, true);
+
+	//xmlhttp.timeout = 5000;
+	xmlhttp.send();
+}
+
+function upload_json() {
+	let el_overlays = document.querySelectorAll('[id^="overlay_select_"]');
+	let el_counts = document.querySelectorAll('[id^="overlay_count_"]');
+	let el_directions = document.querySelectorAll('[id^="overlay_dir_"]');
+	let el_winds = document.querySelectorAll('[id^="overlay_wind_"]');
+	
+	overlays_dict = {};
+	for (let i = 0; i < el_overlays.length; i++) {
+		let el_overlay = el_overlays[i];
+		let el_count = el_counts[i];
+		let el_direction = el_directions[i];
+		let el_wind = el_winds[i];
+
+		let filename = el_overlay.getAttribute('data-filename');
+		let count = el_count.value; // do not use parseInt() because keeping everything as a string makes it easier to parse the JSON file
+		let overlay_fname = el_overlay.options[el_overlay.selectedIndex].value;
+		let direction = el_direction.options[el_direction.selectedIndex].value;
+		let wind = el_wind.value;
+		if (!(filename in overlays_dict)) {
+			overlays_dict[filename] = [];
+		}
+		overlays_dict[filename].push({"file": overlay_fname, 'count': count, 'direction': direction, 'wind': wind});
+	}
+
+	console.log(JSON.stringify(overlays_dict));
+
+	let form_data = new FormData();
+	const blob = new Blob([JSON.stringify(overlays_dict)], { type: "application/json" });
+	form_data.append("upload", blob, "/overlay_assignment.json");
+	
+	fetch('http://jiftbox.local/file_upload', {method:"POST", body:form_data})
+		.then(response => console.log(response.text()));
+}
+
+pull_overlay_list();
+pull_file_list();
+pull_json();
+
+</script>
+</body>
+</html>
