@@ -47,7 +47,7 @@
 			<div style='text-align:center;'>Select a folder to upload.</div>
 			<br>
 			<p>
-			<form id='upload' method='POST' action='/upload' enctype='multipart/form-data'>
+			<form id='upload' method='POST' action='/folder_upload' enctype='multipart/form-data'>
 				<!--need to upload filesize first because Content-Length [request->contentLength()] isn't the actual file size-->
 				<!--input id='filesize' name="filesize" value="0" style="display:none"-->
 				<input id='file' type='file' name='update' webkitdirectory="" directory="" />

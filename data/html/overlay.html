@@ -85,7 +85,7 @@
 			<input type="button" name="emoji" value="❄️">
 			<canvas id="canvas"></canvas>
 			<br>
-			<div style="text-align:center;">White border represents display size. Dark green background represents transparency. Pick an overlay size:</div>
+			<div style="text-align:center;">White border represents size of display. Dark green background represents transparency. Pick an overlay size:</div>
 			<div name="display_border" style="text-align:center; color:#eaeaea; border:1px solid white; margin:0 auto">
 			<label>
 				<input type="radio" name="size" id="radio_small">
@@ -280,13 +280,12 @@
 		context.drawImage(original_canvas, 0, 0);
 		
 		//document.getElementById('image_canvas_tmp').src = context.canvas.toDataURL('image/bmp'); 
-		
-		
+
 		new_canvas.toBlob((blob) => {
 		let data = new FormData();
-		data.append("ImageFileField", blob, "overlays/overlay01.bmp");
+		data.append("upload", blob, "overlays/overlay01.bmp");
 
-		fetch('/upload', {method:"POST", body:data})
+		fetch('/file_upload', {method:"POST", body:data})
 			.then(response => console.log(response.text()));
 		}, 'image/bmp');
 	}
