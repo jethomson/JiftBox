@@ -404,7 +404,6 @@ function pull_file_list() {
 		// makes for easier debugging.
 		// if html is loaded locally, can see the results of editing more easily.
 		// otherwise every change to html would require uploading new version to microcontroller.
-		//url = "http://192.168.1.202"+url;
 		url = "http://jiftbox.local"+url;
 	}
 	xmlhttp.open("GET", url, true);
