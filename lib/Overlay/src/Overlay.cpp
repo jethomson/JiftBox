@@ -51,7 +51,7 @@ void load_sprites(vector<string> overlay_fnames) {
         continue;
       }
       File entry = LittleFS.open(overlay_fnames[i].c_str());
-      if (!entry.isDirectory() && sprite_cnt < MAX_OVERLAY_FILES) {
+      if (!entry.isDirectory() && sprite_cnt < MAX_OVERLAY_FILES_OPEN) {
         uint16_t *data;
 
         uint32_t seekOffset;
@@ -216,7 +216,7 @@ void handle_overlay(std::string imgname, TFT_eSprite* background) {
     
     // set initial positions of overlays
     // i: spans the entire overlay vector
-    //ni: spans the number of overlay image filenames. this will always be less than or equal to MAX_OVERLAY_FILES.
+    //ni: spans the number of overlay image filenames. this will always be less than or equal to MAX_OVERLAY_FILES_OPEN.
     //    since sprites is created using attributes.filenames their lengths will be the same and si will index the sprite containing the image whose filename is indexed by ni when si equals ni
     // j: spans the number of overlay instances for a particular overlay image
     uint16_t i = 0;
@@ -245,7 +245,7 @@ void handle_overlay(std::string imgname, TFT_eSprite* background) {
   // below here runs every time
 
   // i: spans the entire overlay vector
-  //ni: spans the number of overlay image filenames. this will always be less than or equal to MAX_OVERLAY_FILES.
+  //ni: spans the number of overlay image filenames. this will always be less than or equal to MAX_OVERLAY_FILES_OPEN.
   //    since sprites is created using attributes.filenames their lengths will be the same and si will index the sprite containing the image whose filename is indexed by ni when si equals ni
   // j: spans the number of overlay instances for a particular overlay image
   uint16_t i = 0;

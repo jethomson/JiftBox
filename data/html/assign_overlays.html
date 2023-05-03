@@ -153,6 +153,14 @@
 <script>
 var g_overlays = [];
 
+base_url = '';
+if (window.location.protocol == "file:") {
+	// makes for easier debugging.
+	// if html is loaded locally, can see the results of editing more easily.
+	// otherwise every change to html would require uploading new version to microcontroller.
+	base_url = "http://jiftbox.local";
+}
+
 function insert_file_list(responseText) {
 	var maindiv = document.getElementById("maindiv");
 	var form = document.getElementById("assign_form");
@@ -332,15 +340,7 @@ function pull_json() {
 	xmlhttp.onabort   = function() {console.log("onabort")};
 	xmlhttp.ontimeout = function() {console.log("ontimeout")};
 
-	url = "/overlay_assignment.json";
-	if (window.location.protocol == "file:") {
-		// makes for easier debugging.
-		// if html is loaded locally, can see the results of editing more easily.
-		// otherwise every change to html would require uploading new version to microcontroller.
-		//url = "http://192.168.1.202"+url;
-		url = "http://jiftbox.local"+url;
-	}
-	xmlhttp.open("GET", url, true);
+	xmlhttp.open("GET", base_url+'/overlay_assignment.json', true);
 
 	//xmlhttp.timeout = 5000;
 	xmlhttp.send();
@@ -370,15 +370,7 @@ function pull_overlay_list() {
 	xmlhttp.onabort   = function() {console.log("onabort")};
 	xmlhttp.ontimeout = function() {console.log("ontimeout")};
 
-	url = "/overlays";
-	if (window.location.protocol == "file:") {
-		// makes for easier debugging.
-		// if html is loaded locally, can see the results of editing more easily.
-		// otherwise every change to html would require uploading new version to microcontroller.
-		//url = "http://192.168.1.202"+url;
-		url = "http://jiftbox.local"+url;
-	}
-	xmlhttp.open("GET", url, true);
+	xmlhttp.open("GET", base_url+'/overlays', true);
 
 	//xmlhttp.timeout = 5000;
 	xmlhttp.send();
@@ -399,14 +391,7 @@ function pull_file_list() {
 	xmlhttp.onabort   = function() {console.log("onabort")};
 	xmlhttp.ontimeout = function() {console.log("ontimeout")};
 
-	url = "/files";
-	if (window.location.protocol == "file:") {
-		// makes for easier debugging.
-		// if html is loaded locally, can see the results of editing more easily.
-		// otherwise every change to html would require uploading new version to microcontroller.
-		url = "http://jiftbox.local"+url;
-	}
-	xmlhttp.open("GET", url, true);
+	xmlhttp.open("GET", base_url+'/files', true);
 
 	//xmlhttp.timeout = 5000;
 	xmlhttp.send();
@@ -442,7 +427,7 @@ function upload_json() {
 	const blob = new Blob([JSON.stringify(overlays_dict)], { type: "application/json" });
 	form_data.append("upload", blob, "/overlay_assignment.json");
 	
-	fetch('http://jiftbox.local/file_upload', {method:"POST", body:form_data})
+	fetch(base_url+'/file_upload', {method:"POST", body:form_data})
 		.then(response => console.log(response.text()));
 }
 

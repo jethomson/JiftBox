@@ -78,11 +78,50 @@
 
 	<div style="text-align:left;display:inline-block;color:#eaeaea;min-width:340px;">
 		<div style="text-align:center;color:#eaeaea;">
+		<form method='POST' onSubmit="upload()">
 			<div style='text-align:center;'>Enter character(s):</div>
-			<input type="text" id="text" maxlength=2 style="display: block; text-align: center; margin:0 auto">
+			<input type="text" id="text" maxlength=2 style="display: block; text-align: center; margin:0 auto" required>
 			<input type="button" name="emoji" value="🙂">
+			<input type="button" name="emoji" value="🤣">
+			<input type="button" name="emoji" value="🤪">
+			<input type="button" name="emoji" value="🤓">
+			<input type="button" name="emoji" value="😎">
+			<input type="button" name="emoji" value="🥳">
+			<br>
+			<input type="button" name="emoji" value="🦔">
+			<input type="button" name="emoji" value="🐕">
+			<input type="button" name="emoji" value="🐈">
+			<input type="button" name="emoji" value="🐒">
+			<input type="button" name="emoji" value="🐘">
+			<input type="button" name="emoji" value="🌻">
+			<br>
+			<input type="button" name="emoji" value="🍕">
+			<input type="button" name="emoji" value="🍟">
+			<input type="button" name="emoji" value="🎂">
+			<input type="button" name="emoji" value="🌈">
 			<input type="button" name="emoji" value="🫀">
+			<input type="button" name="emoji" value="👍">
+			<br>
+			<input type="button" name="emoji" value="🎅">
 			<input type="button" name="emoji" value="❄️">
+			<input type="button" name="emoji" value="🎄">
+			<input type="button" name="emoji" value="⛄">
+			<input type="button" name="emoji" value="🎁">
+			<input type="button" name="emoji" value="⭐">
+			<br>
+			<input type="button" name="emoji" value="👽">
+			<input type="button" name="emoji" value="💀">
+			<input type="button" name="emoji" value="🎃">
+			<input type="button" name="emoji" value="👻">
+			<input type="button" name="emoji" value="🧟">
+			<input type="button" name="emoji" value="🧠">
+			<br>
+			<input type="button" name="emoji" value="💩">
+			<input type="button" name="emoji" value="🤖">
+			<input type="button" name="emoji" value="🚀">
+			<input type="button" name="emoji" value="🛸">
+			<input type="button" name="emoji" value="☢️">
+			<input type="button" name="emoji" value="💣">
 			<canvas id="canvas"></canvas>
 			<br>
 			<div style="text-align:center;">White border represents size of display. Dark green background represents transparency. Pick an overlay size:</div>
@@ -107,16 +146,13 @@
 			</label>
 			</div>
 			<br>
-			<!--
-			<canvas id="canvas_tmp"></canvas>
-			<br>
-			<img id="image_canvas_tmp">
-			<br>
-			-->
-			<input type="button" id="upload" value="Upload" onclick="upload()">
+			<!--LittleFS implementation for the ESP8266 supports filenames of up to 31 characters + terminating zero. 31 - 4 (.bmp) = 27 -->
+			<label>Filename: </label><input type="text" id="filename" maxlength="27" placeholder="Enter unique filename to save overlay image as." required><label>.bmp</label>
+			<button type="submit">Upload</button>
 			<div id="main_button" class="grid-item-button">
 				<a href="/"><button name="">Main Menu</button></a>
 			</div>
+		</form>
 		</div>
 	</div>
 
@@ -126,6 +162,13 @@
 
 
 	<script>
+	base_url = '';
+	if (window.location.protocol == "file:") {
+		// makes for easier debugging.
+		// if html is loaded locally, can see the results of editing more easily.
+		// otherwise every change to html would require uploading new version to microcontroller.
+		base_url = "http://jiftbox.local";
+	}
 
 	//const params = new Proxy(new URLSearchParams(window.location.search), {
 	//	get: (searchParams, prop) => searchParams.get(prop),
@@ -146,14 +189,15 @@
 	
 	const mdim = Math.max(display_width, display_height);
 
-	const cwidth = Math.round(0.5*mdim);
+	//const cwidth = Math.round(0.5*mdim);
+	const cwidth = Math.round(0.25*mdim);
 	const cheight = cwidth;
 	
 	const font_family = "Arial";
 	const font_size = Math.round(0.80*cwidth) + "px";
 	
-	const factor_small = 0.25;
-	const factor_medium = 0.50;
+	const factor_small = 0.50;
+	const factor_medium = 0.75;
 	const factor_large = 1.00;
 
 	let ctx = document.getElementById('canvas').getContext('2d');
@@ -200,6 +244,7 @@
 	}
 
 	function convert(text) {
+		document.getElementById('text').value = text;
 
 		ctx.font = font_size +" "+ font_family;
 		ctx.fillStyle = "#002400"; // transparent background
@@ -255,7 +300,6 @@
 		image_medium.src = ctx.canvas.toDataURL('image/bmp');
 		console.log(image_medium.src);
 		image_large.src = ctx.canvas.toDataURL('image/bmp');
-
 	}
 
 
@@ -278,15 +322,16 @@
 		new_canvas.getContext("2d").scale(factor * ratio, factor * ratio);
 
 		context.drawImage(original_canvas, 0, 0);
-		
+
 		//document.getElementById('image_canvas_tmp').src = context.canvas.toDataURL('image/bmp'); 
 
 		new_canvas.toBlob((blob) => {
-		let data = new FormData();
-		data.append("upload", blob, "overlays/overlay01.bmp");
 
-		fetch('/file_upload', {method:"POST", body:data})
-			.then(response => console.log(response.text()));
+			const filename = '/overlays/' + document.getElementById('filename').value + '.bmp';
+			let data = new FormData();
+			data.append("upload", blob, filename);
+			fetch(base_url+'/file_upload', {method:"POST", body:data})
+				.then(response => console.log(response.text()));
 		}, 'image/bmp');
 	}
 
@@ -300,7 +345,7 @@
 	input.addEventListener('input', function(){convert(this.value)}, false);
 	
 	const emojiList = document.querySelectorAll('[name="emoji"]');
-	for (let i = 0; i < nodeList.length; i++) {
+	for (let i = 0; i < emojiList.length; i++) {
 		emojiList[i].addEventListener('click', function(){convert(this.value)}, false);
 	}
 
