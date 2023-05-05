@@ -8,6 +8,7 @@
 	<title>Upload Overlay</title>
 	<style>
 	body {
+		color: #eaeaea;
 		text-align: center;
 		font-family: verdana, sans-serif;
 		background: #000000;
@@ -21,8 +22,13 @@
 		/*image-rendering: pixelated;*/
 	}
 	div {
+		text-align: center;
 		padding: 5px;
 		font-size: 1rem;
+	}
+	div[name="display_border"] {
+		border:1px solid white;
+		margin:0 auto;
 	}
 	
 	p {
@@ -33,6 +39,9 @@
 		display: inline-block;
 		margin: auto;
 		vertical-align: middle;
+	}
+	button {
+		margin: 5px;
 	}
 	button,
 	input[type="button"] {
@@ -47,10 +56,16 @@
 		transition-duration: 0.4s;
 		cursor: pointer;
 	}
+	button:hover,
 	input[type="button"]:hover {
 		background: #0e70a4;
 	}
 	input[name="emoji"] { width: auto; display: inline; background:none; border:none; }
+	input[id="input_text"] {
+		display: block;
+		text-align: center;
+		margin: 0 auto;
+	}
 
 	/* HIDE RADIO */
 	[type=radio] { 
@@ -76,11 +91,11 @@
 
 
 
-	<div style="text-align:left;display:inline-block;color:#eaeaea;min-width:340px;">
-		<div style="text-align:center;color:#eaeaea;">
+	<div style="display:inline-block; min-width:340px;">
+		<div>
 		<form method='POST' onSubmit="upload()">
-			<div style='text-align:center;'>Enter character(s):</div>
-			<input type="text" id="text" maxlength=2 style="display: block; text-align: center; margin:0 auto" required>
+			<div>Enter character(s):</div>
+			<input type="text" id="input_text" maxlength=2 required>
 			<input type="button" name="emoji" value="🙂">
 			<input type="button" name="emoji" value="🤣">
 			<input type="button" name="emoji" value="🤪">
@@ -124,22 +139,22 @@
 			<input type="button" name="emoji" value="💣">
 			<canvas id="canvas"></canvas>
 			<br>
-			<div style="text-align:center;">White border represents size of display. Dark green background represents transparency. Pick an overlay size:</div>
-			<div name="display_border" style="text-align:center; color:#eaeaea; border:1px solid white; margin:0 auto">
+			<div>White border represents size of display. Dark green background represents transparency. Pick an overlay size:</div>
+			<div name="display_border">
 			<label>
 				<input type="radio" name="size" id="radio_small">
 				<img id="image_small">
 			</label>
 			</div>
 			<br>
-			<div name="display_border" style="text-align:center; color:#eaeaea; border:1px solid white; margin:0 auto">
+			<div name="display_border">
 			<label>
 				<input type="radio" name="size" id="radio_medium" checked>
 				<img id="image_medium">
 			</label>
 			</div>
 			<br>
-			<div name="display_border" style="text-align:center; color:#eaeaea; border:1px solid white; margin:0 auto">
+			<div name="display_border">
 			<label>
 				<input type="radio" name="size" id="radio_large">
 				<img id="image_large">
@@ -147,12 +162,12 @@
 			</div>
 			<br>
 			<!--LittleFS implementation for the ESP8266 supports filenames of up to 31 characters + terminating zero. 31 - 4 (.bmp) = 27 -->
-			<label>Filename: </label><input type="text" id="filename" maxlength="27" placeholder="Enter unique filename to save overlay image as." required><label>.bmp</label>
-			<button type="submit">Upload</button>
-			<div id="main_button" class="grid-item-button">
-				<a href="/"><button name="">Main Menu</button></a>
+			<div style="display:flex;justify-content:center;align-items:center;">
+				<label>Filename: </label><input type="text" id="filename" maxlength="27" placeholder="Enter unique filename to save overlay image as." style="width: 100%" required><label>.bmp</label>
 			</div>
+			<button type="submit">Upload</button>
 		</form>
+		<a href="/"><button name="">Main Menu</button></a>
 		</div>
 	</div>
 
@@ -201,7 +216,7 @@
 	const factor_large = 1.00;
 
 	let ctx = document.getElementById('canvas').getContext('2d');
-	let input = document.getElementById('text');
+	let input = document.getElementById('input_text');
 	
 	let radio_small = document.getElementById('radio_small');
 	let radio_medium = document.getElementById('radio_medium');
@@ -244,50 +259,11 @@
 	}
 
 	function convert(text) {
-		document.getElementById('text').value = text;
+		document.getElementById('input_text').value = text;
 
 		ctx.font = font_size +" "+ font_family;
 		ctx.fillStyle = "#002400"; // transparent background
 		ctx.fillRect(0, 0, cwidth, cheight);
-
-		/*
-		let metrics = ctx.measureText(this.value);
-		let textWidth = metrics.width;
-		let fontHeight = metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent;
-		//let textHeight = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
-
-		console.log(fontHeight);
-
-		//let textHeight = input.offsetHeight;
-		//let textHeight = span.offsetHeight;
-		let textHeight = 9;
-
-		let x = (sizeWidth-textWidth)/2;
-		let y = (sizeHeight+textHeight)/2;
-
-		//console.log(textWidth);
-		console.log("textHeight: "+textHeight);
- 
-		//console.log((sizeWidth-textWidth)/2);
-		console.log("y: "+y);
-		*/
-
-
-		/*
-		ctx.beginPath();
-		ctx.moveTo(cwidth/2, 0);
-		ctx.lineTo(cwidth/2, cheight);
-		ctx.strokeStyle = '#00ff00';
-		ctx.stroke();
-
-		ctx.beginPath();
-		ctx.moveTo(0, cheight/2);
-		ctx.lineTo(cwidth, cheight/2);
-		ctx.strokeStyle = '#ffffff';
-		ctx.stroke();
-		*/
- 
-		//ctx.fillText(this.value, x, y);
 
 		ctx.textAlign = 'center';
 		ctx.textBaseline = 'middle';
@@ -337,11 +313,6 @@
 
 
 	createHiPPICanvas(cwidth, cheight);
-
-	//input.addEventListener('keyup', convert, false);
-	//input.addEventListener('click', convert, false);
-	//input.addEventListener('change', convert, false);
-	
 	input.addEventListener('input', function(){convert(this.value)}, false);
 	
 	const emojiList = document.querySelectorAll('[name="emoji"]');
