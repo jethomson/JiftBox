@@ -5,16 +5,15 @@
 	<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
 	<title>Assign Overlays</title>
 	<style>
-	
 	:root {
 		--switch-color: white;
 	}
 	
 	body {
+		color: #eaeaea;
+		background: black;
 		text-align: center;
 		font-family: verdana, sans-serif;
-		color: white;
-		background: black;
 	}
 	
 	.grid-container {
@@ -36,17 +35,13 @@
 	}
 	.grid-item-left {
 		width: 100%;
-		display: inline-flex; /*prevent div from being slightly larger on the bottom than the switch */
-		/*background: red;*/
+		display: inline-flex;
 	}
 	.grid-item-right {
-		/*font-size: 2.3rem;
-		font-weight:bold;*/
 		color: white;
 		text-align: left;
 		width: 100%;
 		white-space: nowrap;
-		/*background: red;*/
 	}
 	.grid-item-button {
 		grid-column: 1 / span 2;
@@ -116,9 +111,6 @@
 		color: inherit;
 		text-decoration: none;
 	}
-	
-
-
 	</style>
 </head>
 <body>
@@ -127,26 +119,18 @@
 	<h3>Assign overlays to images.</h3>
 	<div id="maindiv" class="grid-container" style="visibility: hidden">
 		<div class="grid-item-form" id="assign_form" action="upload" method="post">
-	  	<div id="insert_file_list_before_here" style="display: none"></div>
+			<div class="grid-item-left"><label>Name</label><label>Count</label><label>Direction</label><label>Wind</label><label>Name</label><label>Count</label><label>Direction</label><label>Wind</label><label>Name</label><label>Count</label><label>Direction</label><label>Wind</label></div>
+			<div class="grid-item-right"></div>
+		  	<div id="insert_assignment_elements_before_here" style="display: none"></div>
 
-	  	<div class="grid-item-button">
-			<button id="upload_json" onclick="upload_json()">Update Overlays</button>
-		</div>
+		  	<div class="grid-item-button">
+				<button id="save_assignments" onclick="save_assignments()">Update Overlays</button>
+			</div>
 		</div>
 		
 	  	<div id="main_button" class="grid-item-button">
 			<a href="/"><button name="">Main Menu</button></a>
 		</div>
-
-	  	<!--div class="grid-item-button" style="display: none"-->
-	  	<!--
-	  	<div class="grid-item-button">
-			<form action="select_bin" method="get"><button name="">Select Bin File</button></form>
-		</div>
-	  	<div class="grid-item-button">
-			<form action="restart" method="get" onsubmit="return confirm(&quot;Confirm Restart&quot;);"><button name="" class="button bred">Restart</button></form>
-		</div>
-		-->
 	</div>
 
 
@@ -161,16 +145,16 @@ if (window.location.protocol == "file:") {
 	base_url = "http://jiftbox.local";
 }
 
-function insert_file_list(responseText) {
+function insert_assignment_elements(responseText) {
 	var maindiv = document.getElementById("maindiv");
 	var form = document.getElementById("assign_form");
 	
-	//var insert_point = document.getElementById("insert_file_list_here");
+	//var insert_point = document.getElementById("insert_assignment_elements_here");
 	//var content = document.createTextNode(responseText);
 	//console.log(responseText);
 	//insert_point.appendChild(content);
 	
-	var insert_point = document.getElementById("insert_file_list_before_here");
+	var insert_point = document.getElementById("insert_assignment_elements_before_here");
 	
 
 	if (responseText != "") {
@@ -181,7 +165,23 @@ function insert_file_list(responseText) {
 				filename = filename.slice(0, filename.lastIndexOf('\t'));
 				var attributes_div = document.createElement("div");
 				attributes_div.classList.add("grid-item-left");
-			
+				
+				/*
+				for (var onum = 0; onum < 3; onum++) {
+					var hdr1 = document.createElement("label");
+					hdr1.innerHTML = "Name"
+					var hdr2 = document.createElement("label");
+					hdr2.innerHTML = "Num"
+					var hdr3 = document.createElement("label");
+					hdr3.innerHTML = "Dir"
+					var hdr4 = document.createElement("label");
+					hdr4.innerHTML = "Wind"
+					attributes_div.appendChild(hdr1);
+					attributes_div.appendChild(hdr2);
+					attributes_div.appendChild(hdr3);
+					attributes_div.appendChild(hdr4);
+				}
+				*/				
 				for (var onum = 0; onum < 3; onum++) {
 					var overlay_select = document.createElement("select");
 					//overlay_select.setAttribute("type", "select");
@@ -283,7 +283,19 @@ function insert_file_list(responseText) {
 	maindiv.style.visibility = "visible"; 
 }
 
-function load_json(responseText) {
+function create_overlay_files_list(responseText) {
+	if (responseText != "") {
+		var files = responseText.split('\n');
+		for (var i in files) {
+			if (files[i] != "" && !files[i].endsWith('/')) {
+				var filename = files[i];
+				g_overlays.push(filename.slice(0, filename.lastIndexOf('\t')));
+			}
+		}
+	}
+}
+
+function load_saved_assignments(responseText) {
 	let overlay_assignments = JSON.parse(responseText);
 	let el_overlays = document.querySelectorAll('[id^="overlay_select_"]');
 	let el_counts = document.querySelectorAll('[id^="overlay_count_"]');
@@ -325,79 +337,8 @@ function load_json(responseText) {
 	}
 }
 
-function pull_json() {
-	var xmlhttp = new XMLHttpRequest();
-	xmlhttp.onreadystatechange = function() {
-		if (this.readyState == 4 && this.status == 200) {
-			console.log("-----");
-			console.log(this.responseText);
-			console.log("-----");
-			load_json(this.responseText);
-		}
-	};
 
-	xmlhttp.onerror   = function() {console.log("onerror")};
-	xmlhttp.onabort   = function() {console.log("onabort")};
-	xmlhttp.ontimeout = function() {console.log("ontimeout")};
-
-	xmlhttp.open("GET", base_url+'/overlay_assignment.json', true);
-
-	//xmlhttp.timeout = 5000;
-	xmlhttp.send();
-}
-
-
-function pull_overlay_list() {
-	var xmlhttp = new XMLHttpRequest();
-	xmlhttp.onreadystatechange = function() {
-		if (this.readyState == 4 && this.status == 200) {
-			console.log("-----");
-			console.log(this.responseText);
-			console.log("-----");
-			if (this.responseText != "") {
-				var files = this.responseText.split('\n');
-				for (var i in files) {
-					if (files[i] != "" && !files[i].endsWith('/')) {
-						var filename = files[i];
-						g_overlays.push(filename.slice(0, filename.lastIndexOf('\t')));
-					}
-				}
-			}
-		}
-	};
-
-	xmlhttp.onerror   = function() {console.log("onerror")};
-	xmlhttp.onabort   = function() {console.log("onabort")};
-	xmlhttp.ontimeout = function() {console.log("ontimeout")};
-
-	xmlhttp.open("GET", base_url+'/overlays', true);
-
-	//xmlhttp.timeout = 5000;
-	xmlhttp.send();
-}
-
-function pull_file_list() {
-	var xmlhttp = new XMLHttpRequest();
-	xmlhttp.onreadystatechange = function() {
-		if (this.readyState == 4 && this.status == 200) {
-			console.log("-----");
-			console.log(this.responseText);
-			console.log("-----");
-			insert_file_list(this.responseText);
-		}
-	};
-
-	xmlhttp.onerror   = function() {console.log("onerror")};
-	xmlhttp.onabort   = function() {console.log("onabort")};
-	xmlhttp.ontimeout = function() {console.log("ontimeout")};
-
-	xmlhttp.open("GET", base_url+'/files', true);
-
-	//xmlhttp.timeout = 5000;
-	xmlhttp.send();
-}
-
-function upload_json() {
+function save_assignments() {
 	let el_overlays = document.querySelectorAll('[id^="overlay_select_"]');
 	let el_counts = document.querySelectorAll('[id^="overlay_count_"]');
 	let el_directions = document.querySelectorAll('[id^="overlay_dir_"]');
@@ -431,9 +372,36 @@ function upload_json() {
 		.then(response => console.log(response.text()));
 }
 
-pull_overlay_list();
-pull_file_list();
-pull_json();
+
+async function load_assignments() {
+	/*
+	const [data1, data2] = await Promise.all([
+		fetch(base_url+'/overlays'),
+		fetch(base_url+'/files'),
+	])
+		.then(async (response) => {
+			return Promise.all(
+				response.map(async (data) => await data.text())
+			)
+	});
+	*/
+
+	const [data1, data2] = await Promise.all([
+		fetch(base_url+'/overlays'),
+		fetch(base_url+'/files'),
+	]);		
+
+	const rt1 = await data1.text();
+	const rt2 = await data2.text();
+	create_overlay_files_list(rt1);
+	insert_assignment_elements(rt2);
+
+	fetch(base_url+'/overlay_assignment.json')
+		.then(response => response.text())
+		.then(data => load_saved_assignments(data));		
+}
+
+load_assignments();
 
 </script>
 </body>
