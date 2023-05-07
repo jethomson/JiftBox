@@ -15,49 +15,27 @@
 		text-align: center;
 		font-family: verdana, sans-serif;
 	}
-	
 	.grid-container {
 		display: grid;
-		grid-template-columns: auto auto;
+		grid-template-columns: repeat(13, auto);
 		grid-row-gap: 5px;
-		width: 95vw;
+		width: 100%;
 		/*height: 85vh;*/
-		max-width: 600px;
-		max-height: 800px;
+		/*max-width: 600px;
+		max-height: 800px;*/
   		align-items: center;
   		justify-content: center;
 		margin: 0 auto;
 	}
-	.grid-item-form {
-		display: grid;
-  		align-items: center;
-  		justify-content: center;
-	}
-	.grid-item-left {
-		width: 100%;
-		display: inline-flex;
-	}
-	.grid-item-right {
-		color: white;
-		text-align: left;
-		width: 100%;
-		white-space: nowrap;
-	}
-	.grid-item-button {
-		grid-column: 1 / span 2;
-		font-weight:bold;
-		color: white;
-		text-align: center;
-		width: 100%;
-  		align-items: center;
-  		justify-content: center;
-	}
-	.grid-item:active {
-		background: #0e70a4;
-	}
-	.span-regular-file {
+	.grid-item-span {
 		padding-left: 1em;
+  		text-align: left;
 	}
+	.grid-item-msg,
+	.grid-item-button {
+		grid-column: 1 / span 13;
+	}
+
 	
 	button {
 		border: 0;
@@ -70,6 +48,9 @@
 		-webkit-transition-duration: 0.4s;
 		transition-duration: 0.4s;
 		cursor: pointer;
+		font-weight:bold;
+		text-align: center;
+		width: 100%;
 	}
 	
 	button:hover {
@@ -115,21 +96,16 @@
 </head>
 <body>
 
-
-	<h3>Assign overlays to images.</h3>
-	<div id="maindiv" class="grid-container" style="visibility: hidden">
-		<div class="grid-item-form" id="assign_form" action="upload" method="post">
-			<div class="grid-item-left"><label>Name</label><label>Count</label><label>Direction</label><label>Wind</label><label>Name</label><label>Count</label><label>Direction</label><label>Wind</label><label>Name</label><label>Count</label><label>Direction</label><label>Wind</label></div>
-			<div class="grid-item-right"></div>
-		  	<div id="insert_assignment_elements_before_here" style="display: none"></div>
-
-		  	<div class="grid-item-button">
+	<div id="maindiv" style="visibility: hidden">
+		<h3>Assign overlays to images.</h3>
+		<form id="overlays_form" action="upload" method="POST"></form>
+		<div id="grid_container" class="grid-container">
+		  	<div id="insert_before_here" class="grid-item-button" form="overlays_form">
 				<button id="save_assignments" onclick="save_assignments()">Update Overlays</button>
 			</div>
-		</div>
-		
-	  	<div id="main_button" class="grid-item-button">
-			<a href="/"><button name="">Main Menu</button></a>
+		  	<div id="main_button" class="grid-item-button">
+				<a href="/"><button name="">Main Menu</button></a>
+			</div>
 		</div>
 	</div>
 
@@ -147,46 +123,44 @@ if (window.location.protocol == "file:") {
 
 function insert_assignment_elements(responseText) {
 	var maindiv = document.getElementById("maindiv");
-	var form = document.getElementById("assign_form");
+	var container = document.getElementById("grid_container");
 	
-	//var insert_point = document.getElementById("insert_assignment_elements_here");
-	//var content = document.createTextNode(responseText);
-	//console.log(responseText);
-	//insert_point.appendChild(content);
+	var insert_point = document.getElementById("insert_before_here");
 	
-	var insert_point = document.getElementById("insert_assignment_elements_before_here");
-	
-
 	if (responseText != "") {
+
+		for (var onum = 0; onum < 3; onum++) {
+			var hdr0 = document.createElement("label");
+			hdr0.innerHTML = "Name"
+			var hdr1 = document.createElement("label");
+			hdr1.innerHTML = "Count"
+			var hdr2 = document.createElement("label");
+			hdr2.innerHTML = "Direction"
+			var hdr3 = document.createElement("label");
+			hdr3.innerHTML = "Wind"
+
+			container.insertBefore(hdr0, insert_point);
+			container.insertBefore(hdr1, insert_point);
+			container.insertBefore(hdr2, insert_point);
+			container.insertBefore(hdr3, insert_point);
+
+		}
+
+		var hdr4 = document.createElement("label");
+		hdr4.innerHTML = "Filename"
+		container.insertBefore(hdr4, insert_point);
+
 		var files = responseText.split('\n');
 		for (var i in files) {
 			if (files[i] != "" && !files[i].endsWith('/')) {
 				var filename = files[i];
 				filename = filename.slice(0, filename.lastIndexOf('\t'));
-				var attributes_div = document.createElement("div");
-				attributes_div.classList.add("grid-item-left");
-				
-				/*
-				for (var onum = 0; onum < 3; onum++) {
-					var hdr1 = document.createElement("label");
-					hdr1.innerHTML = "Name"
-					var hdr2 = document.createElement("label");
-					hdr2.innerHTML = "Num"
-					var hdr3 = document.createElement("label");
-					hdr3.innerHTML = "Dir"
-					var hdr4 = document.createElement("label");
-					hdr4.innerHTML = "Wind"
-					attributes_div.appendChild(hdr1);
-					attributes_div.appendChild(hdr2);
-					attributes_div.appendChild(hdr3);
-					attributes_div.appendChild(hdr4);
-				}
-				*/				
+
 				for (var onum = 0; onum < 3; onum++) {
 					var overlay_select = document.createElement("select");
-					//overlay_select.setAttribute("type", "select");
 					overlay_select.setAttribute("id", 'overlay_select_'+onum+'_'+filename);
 					overlay_select.setAttribute("name", 'overlay_select_'+onum+'_'+filename);
+					overlay_select.setAttribute("form", "overlays_form");
 					overlay_select.setAttribute("data-filename", filename);
 					overlay_select.setAttribute("data-index", onum);
 
@@ -209,11 +183,12 @@ function insert_assignment_elements(responseText) {
 					overlay_cnt.setAttribute("value", 0);
 					overlay_cnt.setAttribute("id", 'overlay_count_'+onum+'_'+filename);
 					overlay_cnt.setAttribute("name", 'overlay_count_'+onum+'_'+filename);
-
+					overlay_cnt.setAttribute("form", "overlays_form");
 					
 					var dir_select = document.createElement("select");
 					dir_select.setAttribute("id", 'overlay_dir_'+onum+'_'+filename);
 					dir_select.setAttribute("name", 'overlay_dir_'+onum+'_'+filename);
+					dir_select.setAttribute("form", "overlays_form");
 					
 					var option = document.createElement("option");
 					option.text = "fall";
@@ -242,42 +217,30 @@ function insert_assignment_elements(responseText) {
 					wind_speed.setAttribute("value", 0);
 					wind_speed.setAttribute("id", 'overlay_wind_'+onum+'_'+filename);
 					wind_speed.setAttribute("name", 'overlay_wind_'+onum+'_'+filename);
-					//wind_speed.setAttribute("data-filename", filename);
+					wind_speed.setAttribute("form", "overlays_form");
 
-					attributes_div.appendChild(overlay_select);
-					attributes_div.appendChild(overlay_cnt);
-					attributes_div.appendChild(dir_select);
-					attributes_div.appendChild(wind_speed);
+
+					container.insertBefore(overlay_select, insert_point);
+					container.insertBefore(overlay_cnt, insert_point);
+					container.insertBefore(dir_select, insert_point);
+					container.insertBefore(wind_speed, insert_point);
 				}
 
-				var label_div = document.createElement("div");
 				var label_span = document.createElement("span");
-
+				label_span.classList.add("grid-item-span");
 				var label_text = filename
-				if (!files[i].endsWith('/')) {
-					//label_text = '├──'+label_text;
-					//label_text = '\\___'+label_text;
-					label_span.classList.add("span-regular-file");
-				}
-			
-				label_div.classList.add("grid-item-right");
-				//label_span.setAttribute("text", label_text);
-				//label_span.setAttribute("id", "smart_text_"+devices[d].text);
-			
-
 				label_span.appendChild(document.createTextNode(label_text));
-				label_div.appendChild(label_span);
-			
-				form.insertBefore(attributes_div, insert_point);
-				form.insertBefore(label_div, insert_point);
+				container.insertBefore(label_span, insert_point);
 			}
 		}
 	}
 	else {
 		var not_found_div = document.createElement("div");
 		not_found_div.innerText = "No files found.";
+		not_found_div.classList = "grid-item-msg";
 		not_found_div.style = "color: white; text-align: center; width: 100%;"
-		form.insertBefore(not_found_div, insert_point);
+		container.insertBefore(not_found_div, insert_point);
+		insert_point.style.visibility = "hidden"; 
 	}
 	
 	maindiv.style.visibility = "visible"; 
@@ -337,6 +300,14 @@ function load_saved_assignments(responseText) {
 	}
 }
 
+function upload_status(json) {
+	if (json["file_upload_status"] == 0) {
+		console.log('File uploaded successfully.');
+	}
+	else {
+		console.log('File upload failed.');
+	}
+}
 
 function save_assignments() {
 	let el_overlays = document.querySelectorAll('[id^="overlay_select_"]');
@@ -369,7 +340,8 @@ function save_assignments() {
 	form_data.append("upload", blob, "/overlay_assignment.json");
 	
 	fetch(base_url+'/file_upload', {method:"POST", body:form_data})
-		.then(response => console.log(response.text()));
+		.then(response => response.json())
+		.then(data => upload_status(data));
 }
 
 

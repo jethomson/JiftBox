@@ -201,6 +201,9 @@ void handle_overlay(std::string imgname, TFT_eSprite* background) {
 
     uint16_t total_num_overlays = 0;
     for (uint8_t ni = 0; ni < attributes.filenames.size(); ni++) {
+      if (attributes.filenames[ni] == "No Overlay") {
+        attributes.num_instances[ni] = "0";
+      }
       total_num_overlays += stoi(attributes.num_instances[ni]);
     }
     if (total_num_overlays == 0) {
