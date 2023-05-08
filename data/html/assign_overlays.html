@@ -110,271 +110,271 @@
 	</div>
 
 
-<script>
-var g_overlays = [];
-
-base_url = '';
-if (window.location.protocol == "file:") {
-	// makes for easier debugging.
-	// if html is loaded locally, can see the results of editing more easily.
-	// otherwise every change to html would require uploading new version to microcontroller.
-	base_url = "http://jiftbox.local";
-}
-
-function insert_assignment_elements(responseText) {
-	var maindiv = document.getElementById("maindiv");
-	var container = document.getElementById("grid_container");
+	<script type="text/javascript">
+	var g_overlays = [];
 	
-	var insert_point = document.getElementById("insert_before_here");
-	
-	if (responseText != "") {
-
-		for (var onum = 0; onum < 3; onum++) {
-			var hdr0 = document.createElement("label");
-			hdr0.innerHTML = "Name"
-			var hdr1 = document.createElement("label");
-			hdr1.innerHTML = "Count"
-			var hdr2 = document.createElement("label");
-			hdr2.innerHTML = "Direction"
-			var hdr3 = document.createElement("label");
-			hdr3.innerHTML = "Wind"
-
-			container.insertBefore(hdr0, insert_point);
-			container.insertBefore(hdr1, insert_point);
-			container.insertBefore(hdr2, insert_point);
-			container.insertBefore(hdr3, insert_point);
-
-		}
-
-		var hdr4 = document.createElement("label");
-		hdr4.innerHTML = "Filename"
-		container.insertBefore(hdr4, insert_point);
-
-		var files = responseText.split('\n');
-		for (var i in files) {
-			if (files[i] != "" && !files[i].endsWith('/')) {
-				var filename = files[i];
-				filename = filename.slice(0, filename.lastIndexOf('\t'));
-
-				for (var onum = 0; onum < 3; onum++) {
-					var overlay_select = document.createElement("select");
-					overlay_select.setAttribute("id", 'overlay_select_'+onum+'_'+filename);
-					overlay_select.setAttribute("name", 'overlay_select_'+onum+'_'+filename);
-					overlay_select.setAttribute("form", "overlays_form");
-					overlay_select.setAttribute("data-filename", filename);
-					overlay_select.setAttribute("data-index", onum);
-
-					var option = document.createElement("option");
-					option.text = "No Overlay";
-					overlay_select.add(option);
-					for (let j = 0; j < g_overlays.length; j++) {
-						var option = document.createElement("option");
-						option.value = g_overlays[j]; 
-						option.text = g_overlays[j].replace('/overlays/', '');
-						overlay_select.add(option);
-					}
-
-					var overlay_cnt = document.createElement("input");
-					overlay_cnt.setAttribute("type", "number");
-					overlay_cnt.style.width = "40px";
-					overlay_cnt.setAttribute("quantity", 1);
-					overlay_cnt.setAttribute("min", 0);
-					overlay_cnt.setAttribute("max", 50);
-					overlay_cnt.setAttribute("value", 0);
-					overlay_cnt.setAttribute("id", 'overlay_count_'+onum+'_'+filename);
-					overlay_cnt.setAttribute("name", 'overlay_count_'+onum+'_'+filename);
-					overlay_cnt.setAttribute("form", "overlays_form");
-					
-					var dir_select = document.createElement("select");
-					dir_select.setAttribute("id", 'overlay_dir_'+onum+'_'+filename);
-					dir_select.setAttribute("name", 'overlay_dir_'+onum+'_'+filename);
-					dir_select.setAttribute("form", "overlays_form");
-					
-					var option = document.createElement("option");
-					option.text = "fall";
-					option.value = "fall";
-					dir_select.add(option);
-					var option = document.createElement("option");
-					option.text = "rise";
-					option.value = "rise";
-					dir_select.add(option);
-					var option = document.createElement("option");
-					option.text = "forward";
-					option.value = "forward";
-					dir_select.add(option);
-					var option = document.createElement("option");
-					option.text = "backward";
-					option.value = "backward";
-					dir_select.add(option);
-
-					
-					var wind_speed = document.createElement("input");
-					wind_speed.setAttribute("type", "number");
-					wind_speed.style.width = "40px";
-					wind_speed.setAttribute("quantity", 1);
-					wind_speed.setAttribute("min", 0);
-					wind_speed.setAttribute("max", 50);
-					wind_speed.setAttribute("value", 0);
-					wind_speed.setAttribute("id", 'overlay_wind_'+onum+'_'+filename);
-					wind_speed.setAttribute("name", 'overlay_wind_'+onum+'_'+filename);
-					wind_speed.setAttribute("form", "overlays_form");
-
-
-					container.insertBefore(overlay_select, insert_point);
-					container.insertBefore(overlay_cnt, insert_point);
-					container.insertBefore(dir_select, insert_point);
-					container.insertBefore(wind_speed, insert_point);
-				}
-
-				var label_span = document.createElement("span");
-				label_span.classList.add("grid-item-span");
-				var label_text = filename
-				label_span.appendChild(document.createTextNode(label_text));
-				container.insertBefore(label_span, insert_point);
-			}
-		}
-	}
-	else {
-		var not_found_div = document.createElement("div");
-		not_found_div.innerText = "No files found.";
-		not_found_div.classList = "grid-item-msg";
-		not_found_div.style = "color: white; text-align: center; width: 100%;"
-		container.insertBefore(not_found_div, insert_point);
-		insert_point.style.visibility = "hidden"; 
+	base_url = '';
+	if (window.location.protocol == "file:") {
+		// makes for easier debugging.
+		// if html is loaded locally, can see the results of editing more easily.
+		// otherwise every change to html would require uploading new version to microcontroller.
+		base_url = "http://jiftbox.local";
 	}
 	
-	maindiv.style.visibility = "visible"; 
-}
-
-function create_overlay_files_list(responseText) {
-	if (responseText != "") {
-		var files = responseText.split('\n');
-		for (var i in files) {
-			if (files[i] != "" && !files[i].endsWith('/')) {
-				var filename = files[i];
-				g_overlays.push(filename.slice(0, filename.lastIndexOf('\t')));
-			}
-		}
-	}
-}
-
-function load_saved_assignments(responseText) {
-	let overlay_assignments = JSON.parse(responseText);
-	let el_overlays = document.querySelectorAll('[id^="overlay_select_"]');
-	let el_counts = document.querySelectorAll('[id^="overlay_count_"]');
-	let el_directions = document.querySelectorAll('[id^="overlay_dir_"]');
-	let el_winds = document.querySelectorAll('[id^="overlay_wind_"]');
-	
-	overlays_dict = {};
-	for (let i = 0; i < el_overlays.length; i++) {
-		let el_overlay = el_overlays[i];
-		let el_count = el_counts[i];
-		let el_direction = el_directions[i];
-		let el_wind = el_winds[i];
+	function insert_assignment_elements(responseText) {
+		var maindiv = document.getElementById("maindiv");
+		var container = document.getElementById("grid_container");
 		
-		let filename = el_overlay.getAttribute('data-filename');
-		let index = parseInt(el_overlay.getAttribute('data-index'));
-
-		if (filename in overlay_assignments) {
-			for (let j = 0; j < el_overlay.options.length; j++) {
-				// cannot directly set value because we cannot be sure the overlay file assigned in the json still exists in /overlays/
-				// so loop through all of the options and set the overlay and attributes if the file in the json matches an existing overlay file option
-				if (el_overlay.options[j].value === overlay_assignments[filename][index]['file']) {
-					el_overlay.selectedIndex = j;
-					value = overlay_assignments[filename][index]['count'];
-					if (typeof value !== 'undefined') {
-						el_count.value = parseInt(value);
+		var insert_point = document.getElementById("insert_before_here");
+		
+		if (responseText != "") {
+	
+			for (var onum = 0; onum < 3; onum++) {
+				var hdr0 = document.createElement("label");
+				hdr0.innerHTML = "Name"
+				var hdr1 = document.createElement("label");
+				hdr1.innerHTML = "Count"
+				var hdr2 = document.createElement("label");
+				hdr2.innerHTML = "Direction"
+				var hdr3 = document.createElement("label");
+				hdr3.innerHTML = "Wind"
+	
+				container.insertBefore(hdr0, insert_point);
+				container.insertBefore(hdr1, insert_point);
+				container.insertBefore(hdr2, insert_point);
+				container.insertBefore(hdr3, insert_point);
+	
+			}
+	
+			var hdr4 = document.createElement("label");
+			hdr4.innerHTML = "Filename"
+			container.insertBefore(hdr4, insert_point);
+	
+			var files = responseText.split('\n');
+			for (var i in files) {
+				if (files[i] != "" && !files[i].endsWith('/')) {
+					var filename = files[i];
+					filename = filename.slice(0, filename.lastIndexOf('\t'));
+	
+					for (var onum = 0; onum < 3; onum++) {
+						var overlay_select = document.createElement("select");
+						overlay_select.setAttribute("id", 'overlay_select_'+onum+'_'+filename);
+						overlay_select.setAttribute("name", 'overlay_select_'+onum+'_'+filename);
+						overlay_select.setAttribute("form", "overlays_form");
+						overlay_select.setAttribute("data-filename", filename);
+						overlay_select.setAttribute("data-index", onum);
+	
+						var option = document.createElement("option");
+						option.text = "No Overlay";
+						overlay_select.add(option);
+						for (let j = 0; j < g_overlays.length; j++) {
+							var option = document.createElement("option");
+							option.value = g_overlays[j]; 
+							option.text = g_overlays[j].replace('/overlays/', '');
+							overlay_select.add(option);
+						}
+	
+						var overlay_cnt = document.createElement("input");
+						overlay_cnt.setAttribute("type", "number");
+						overlay_cnt.style.width = "40px";
+						overlay_cnt.setAttribute("quantity", 1);
+						overlay_cnt.setAttribute("min", 0);
+						overlay_cnt.setAttribute("max", 50);
+						overlay_cnt.setAttribute("value", 0);
+						overlay_cnt.setAttribute("id", 'overlay_count_'+onum+'_'+filename);
+						overlay_cnt.setAttribute("name", 'overlay_count_'+onum+'_'+filename);
+						overlay_cnt.setAttribute("form", "overlays_form");
+						
+						var dir_select = document.createElement("select");
+						dir_select.setAttribute("id", 'overlay_dir_'+onum+'_'+filename);
+						dir_select.setAttribute("name", 'overlay_dir_'+onum+'_'+filename);
+						dir_select.setAttribute("form", "overlays_form");
+						
+						var option = document.createElement("option");
+						option.text = "fall";
+						option.value = "fall";
+						dir_select.add(option);
+						var option = document.createElement("option");
+						option.text = "rise";
+						option.value = "rise";
+						dir_select.add(option);
+						var option = document.createElement("option");
+						option.text = "forward";
+						option.value = "forward";
+						dir_select.add(option);
+						var option = document.createElement("option");
+						option.text = "backward";
+						option.value = "backward";
+						dir_select.add(option);
+	
+						
+						var wind_speed = document.createElement("input");
+						wind_speed.setAttribute("type", "number");
+						wind_speed.style.width = "40px";
+						wind_speed.setAttribute("quantity", 1);
+						wind_speed.setAttribute("min", 0);
+						wind_speed.setAttribute("max", 50);
+						wind_speed.setAttribute("value", 0);
+						wind_speed.setAttribute("id", 'overlay_wind_'+onum+'_'+filename);
+						wind_speed.setAttribute("name", 'overlay_wind_'+onum+'_'+filename);
+						wind_speed.setAttribute("form", "overlays_form");
+	
+	
+						container.insertBefore(overlay_select, insert_point);
+						container.insertBefore(overlay_cnt, insert_point);
+						container.insertBefore(dir_select, insert_point);
+						container.insertBefore(wind_speed, insert_point);
 					}
-					value = overlay_assignments[filename][index]['direction'];
-					if (typeof value !== 'undefined') {
-						el_direction.value = value;
-					}
-					value = parseInt(overlay_assignments[filename][index]['wind']);
-					if (typeof value !== 'undefined') {
-						el_wind.value = parseInt(value);
-					}
-					break;
+	
+					var label_span = document.createElement("span");
+					label_span.classList.add("grid-item-span");
+					var label_text = filename
+					label_span.appendChild(document.createTextNode(label_text));
+					container.insertBefore(label_span, insert_point);
+				}
+			}
+		}
+		else {
+			var not_found_div = document.createElement("div");
+			not_found_div.innerText = "No files found.";
+			not_found_div.classList = "grid-item-msg";
+			not_found_div.style = "color: white; text-align: center; width: 100%;"
+			container.insertBefore(not_found_div, insert_point);
+			insert_point.style.visibility = "hidden"; 
+		}
+		
+		maindiv.style.visibility = "visible"; 
+	}
+	
+	function create_overlay_files_list(responseText) {
+		if (responseText != "") {
+			var files = responseText.split('\n');
+			for (var i in files) {
+				if (files[i] != "" && !files[i].endsWith('/')) {
+					var filename = files[i];
+					g_overlays.push(filename.slice(0, filename.lastIndexOf('\t')));
 				}
 			}
 		}
 	}
-}
-
-function upload_status(json) {
-	if (json["file_upload_status"] == 0) {
-		console.log('File uploaded successfully.');
-	}
-	else {
-		console.log('File upload failed.');
-	}
-}
-
-function save_assignments() {
-	let el_overlays = document.querySelectorAll('[id^="overlay_select_"]');
-	let el_counts = document.querySelectorAll('[id^="overlay_count_"]');
-	let el_directions = document.querySelectorAll('[id^="overlay_dir_"]');
-	let el_winds = document.querySelectorAll('[id^="overlay_wind_"]');
 	
-	overlays_dict = {};
-	for (let i = 0; i < el_overlays.length; i++) {
-		let el_overlay = el_overlays[i];
-		let el_count = el_counts[i];
-		let el_direction = el_directions[i];
-		let el_wind = el_winds[i];
-
-		let filename = el_overlay.getAttribute('data-filename');
-		let count = el_count.value; // do not use parseInt() because keeping everything as a string makes it easier to parse the JSON file
-		let overlay_fname = el_overlay.options[el_overlay.selectedIndex].value;
-		let direction = el_direction.options[el_direction.selectedIndex].value;
-		let wind = el_wind.value;
-		if (!(filename in overlays_dict)) {
-			overlays_dict[filename] = [];
+	function load_saved_assignments(responseText) {
+		let overlay_assignments = JSON.parse(responseText);
+		let el_overlays = document.querySelectorAll('[id^="overlay_select_"]');
+		let el_counts = document.querySelectorAll('[id^="overlay_count_"]');
+		let el_directions = document.querySelectorAll('[id^="overlay_dir_"]');
+		let el_winds = document.querySelectorAll('[id^="overlay_wind_"]');
+		
+		overlays_dict = {};
+		for (let i = 0; i < el_overlays.length; i++) {
+			let el_overlay = el_overlays[i];
+			let el_count = el_counts[i];
+			let el_direction = el_directions[i];
+			let el_wind = el_winds[i];
+			
+			let filename = el_overlay.getAttribute('data-filename');
+			let index = parseInt(el_overlay.getAttribute('data-index'));
+	
+			if (filename in overlay_assignments) {
+				for (let j = 0; j < el_overlay.options.length; j++) {
+					// cannot directly set value because we cannot be sure the overlay file assigned in the json still exists in /overlays/
+					// so loop through all of the options and set the overlay and attributes if the file in the json matches an existing overlay file option
+					if (el_overlay.options[j].value === overlay_assignments[filename][index]['file']) {
+						el_overlay.selectedIndex = j;
+						value = overlay_assignments[filename][index]['count'];
+						if (typeof value !== 'undefined') {
+							el_count.value = parseInt(value);
+						}
+						value = overlay_assignments[filename][index]['direction'];
+						if (typeof value !== 'undefined') {
+							el_direction.value = value;
+						}
+						value = parseInt(overlay_assignments[filename][index]['wind']);
+						if (typeof value !== 'undefined') {
+							el_wind.value = parseInt(value);
+						}
+						break;
+					}
+				}
+			}
 		}
-		overlays_dict[filename].push({"file": overlay_fname, 'count': count, 'direction': direction, 'wind': wind});
 	}
-
-	console.log(JSON.stringify(overlays_dict));
-
-	let form_data = new FormData();
-	const blob = new Blob([JSON.stringify(overlays_dict)], { type: "application/json" });
-	form_data.append("upload", blob, "/overlay_assignment.json");
 	
-	fetch(base_url+'/file_upload', {method:"POST", body:form_data})
-		.then(response => response.json())
-		.then(data => upload_status(data));
-}
-
-
-async function load_assignments() {
-	/*
-	const [data1, data2] = await Promise.all([
-		fetch(base_url+'/overlay_file_list'),
-		fetch(base_url+'/file_list'),
-	])
-		.then(async (response) => {
-			return Promise.all(
-				response.map(async (data) => await data.text())
-			)
-	});
-	*/
-
-	const [data1, data2] = await Promise.all([
-		fetch(base_url+'/overlay_file_list'),
-		fetch(base_url+'/file_list'),
-	]);		
-
-	const rt1 = await data1.text();
-	const rt2 = await data2.text();
-	create_overlay_files_list(rt1);
-	insert_assignment_elements(rt2);
-
-	fetch(base_url+'/overlay_assignment.json')
-		.then(response => response.text())
-		.then(data => load_saved_assignments(data));		
-}
-
-load_assignments();
-
-</script>
+	function upload_status(json) {
+		if (json["file_upload_status"] == 0) {
+			console.log('File uploaded successfully.');
+		}
+		else {
+			console.log('File upload failed.');
+		}
+	}
+	
+	function save_assignments() {
+		let el_overlays = document.querySelectorAll('[id^="overlay_select_"]');
+		let el_counts = document.querySelectorAll('[id^="overlay_count_"]');
+		let el_directions = document.querySelectorAll('[id^="overlay_dir_"]');
+		let el_winds = document.querySelectorAll('[id^="overlay_wind_"]');
+		
+		overlays_dict = {};
+		for (let i = 0; i < el_overlays.length; i++) {
+			let el_overlay = el_overlays[i];
+			let el_count = el_counts[i];
+			let el_direction = el_directions[i];
+			let el_wind = el_winds[i];
+	
+			let filename = el_overlay.getAttribute('data-filename');
+			let count = el_count.value; // do not use parseInt() because keeping everything as a string makes it easier to parse the JSON file
+			let overlay_fname = el_overlay.options[el_overlay.selectedIndex].value;
+			let direction = el_direction.options[el_direction.selectedIndex].value;
+			let wind = el_wind.value;
+			if (!(filename in overlays_dict)) {
+				overlays_dict[filename] = [];
+			}
+			overlays_dict[filename].push({"file": overlay_fname, 'count': count, 'direction': direction, 'wind': wind});
+		}
+	
+		console.log(JSON.stringify(overlays_dict));
+	
+		let form_data = new FormData();
+		const blob = new Blob([JSON.stringify(overlays_dict)], { type: "application/json" });
+		form_data.append("upload", blob, "/overlay_assignment.json");
+		
+		fetch(base_url+'/file_upload', {method:"POST", body:form_data})
+			.then(response => response.json())
+			.then(data => upload_status(data));
+	}
+	
+	
+	async function load_assignments() {
+		/*
+		const [data1, data2] = await Promise.all([
+			fetch(base_url+'/overlay_file_list'),
+			fetch(base_url+'/file_list'),
+		])
+			.then(async (response) => {
+				return Promise.all(
+					response.map(async (data) => await data.text())
+				)
+		});
+		*/
+	
+		const [data1, data2] = await Promise.all([
+			fetch(base_url+'/overlay_file_list'),
+			fetch(base_url+'/file_list'),
+		]);		
+	
+		const rt1 = await data1.text();
+		const rt2 = await data2.text();
+		create_overlay_files_list(rt1);
+		insert_assignment_elements(rt2);
+	
+		fetch(base_url+'/overlay_assignment.json')
+			.then(response => response.text())
+			.then(data => load_saved_assignments(data));		
+	}
+	
+	load_assignments();
+	
+	</script>
 </body>
 </html>

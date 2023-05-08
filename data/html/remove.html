@@ -151,102 +151,102 @@
 	</div>
 
 
-<script>
+	<script type="text/javascript">
 
-function insert_file_list(responseText) {
-	var maindiv = document.getElementById("maindiv");
-	var form = document.getElementById("delete_form");
+	function insert_file_list(responseText) {
+		var maindiv = document.getElementById("maindiv");
+		var form = document.getElementById("delete_form");
+		
+		//var insert_point = document.getElementById("insert_file_list_here");
+		//var content = document.createTextNode(responseText);
+		//console.log(responseText);
+		//insert_point.appendChild(content);
+		
+		var insert_point = document.getElementById("insert_file_list_before_here");
+		
 	
-	//var insert_point = document.getElementById("insert_file_list_here");
-	//var content = document.createTextNode(responseText);
-	//console.log(responseText);
-	//insert_point.appendChild(content);
+		if (responseText != "") {
+			var files = responseText.split('\n');
+			for (var i in files) {
+				if (files[i] != "") {
+					var switch_div = document.createElement("div");
+					var switch_input = document.createElement("input");
+				
+					switch_div.classList.add("grid-item-left");
+					//switch_input.classList.add("smart_checkbox");
+					//switch_input.classList.add("switch");
+					switch_input.setAttribute("type", "checkbox");
+					switch_input.setAttribute("id", files[i]);
+					switch_input.setAttribute("name", files[i]);
 	
-	var insert_point = document.getElementById("insert_file_list_before_here");
+					switch_div.appendChild(switch_input);
 	
-
-	if (responseText != "") {
-		var files = responseText.split('\n');
-		for (var i in files) {
-			if (files[i] != "") {
-				var switch_div = document.createElement("div");
-				var switch_input = document.createElement("input");
-			
-				switch_div.classList.add("grid-item-left");
-				//switch_input.classList.add("smart_checkbox");
-				//switch_input.classList.add("switch");
-				switch_input.setAttribute("type", "checkbox");
-				switch_input.setAttribute("id", files[i]);
-				switch_input.setAttribute("name", files[i]);
-
-				switch_div.appendChild(switch_input);
-
-				var label_div = document.createElement("div");
-				var label_span = document.createElement("span");
-
-				var label_text = files[i];
-				if (!files[i].endsWith('/')) {
-					//label_text = '├──'+label_text;
-					//label_text = '\\___'+label_text;
-					label_span.classList.add("span-regular-file");
+					var label_div = document.createElement("div");
+					var label_span = document.createElement("span");
+	
+					var label_text = files[i];
+					if (!files[i].endsWith('/')) {
+						//label_text = '├──'+label_text;
+						//label_text = '\\___'+label_text;
+						label_span.classList.add("span-regular-file");
+					}
+				
+					label_div.classList.add("grid-item-right");
+					//label_span.setAttribute("text", label_text);
+					//label_span.setAttribute("id", "smart_text_"+devices[d].text);
+				
+	
+					label_span.appendChild(document.createTextNode(label_text));
+					label_div.appendChild(label_span);
+				
+					form.insertBefore(switch_div, insert_point);
+					form.insertBefore(label_div, insert_point);
 				}
-			
-				label_div.classList.add("grid-item-right");
-				//label_span.setAttribute("text", label_text);
-				//label_span.setAttribute("id", "smart_text_"+devices[d].text);
-			
-
-				label_span.appendChild(document.createTextNode(label_text));
-				label_div.appendChild(label_span);
-			
-				form.insertBefore(switch_div, insert_point);
-				form.insertBefore(label_div, insert_point);
 			}
 		}
-	}
-	else {
-		var not_found_div = document.createElement("div");
-		not_found_div.innerText = "No files found.";
-		not_found_div.style = "color: white; text-align: center; width: 100%;"
-		form.insertBefore(not_found_div, insert_point);
+		else {
+			var not_found_div = document.createElement("div");
+			not_found_div.innerText = "No files found.";
+			not_found_div.style = "color: white; text-align: center; width: 100%;"
+			form.insertBefore(not_found_div, insert_point);
+		}
+		
+	
+		maindiv.style.visibility = "visible"; 
 	}
 	
-
-	maindiv.style.visibility = "visible"; 
-}
-
-function pull_file_list() {
-	var xmlhttp = new XMLHttpRequest();
-	xmlhttp.onreadystatechange = function() {
-		if (this.readyState == 4 && this.status == 200) {
-			console.log("-----");
-			console.log(this.responseText);
-			console.log("-----");
-			insert_file_list(this.responseText);
+	function pull_file_list() {
+		var xmlhttp = new XMLHttpRequest();
+		xmlhttp.onreadystatechange = function() {
+			if (this.readyState == 4 && this.status == 200) {
+				console.log("-----");
+				console.log(this.responseText);
+				console.log("-----");
+				insert_file_list(this.responseText);
+			}
+		};
+	
+		xmlhttp.onerror   = function() {console.log("onerror")};
+		xmlhttp.onabort   = function() {console.log("onabort")};
+		xmlhttp.ontimeout = function() {console.log("ontimeout")};
+	
+		url = "/file_list";
+		if (window.location.protocol == "file:") {
+			// makes for easier debugging.
+			// if html is loaded locally, can see the results of editing more easily.
+			// otherwise every change to html would require uploading new version to microcontroller.
+			url = "http://jiftbox.local"+url;
 		}
-	};
-
-	xmlhttp.onerror   = function() {console.log("onerror")};
-	xmlhttp.onabort   = function() {console.log("onabort")};
-	xmlhttp.ontimeout = function() {console.log("ontimeout")};
-
-	url = "/file_list";
-	if (window.location.protocol == "file:") {
-		// makes for easier debugging.
-		// if html is loaded locally, can see the results of editing more easily.
-		// otherwise every change to html would require uploading new version to microcontroller.
-		url = "http://jiftbox.local"+url;
+		xmlhttp.open("GET", url, true);
+	
+		//xmlhttp.timeout = 5000;
+		xmlhttp.send();
 	}
-	xmlhttp.open("GET", url, true);
-
-	//xmlhttp.timeout = 5000;
-	xmlhttp.send();
-}
-
-
-
-pull_file_list();
-
-</script>
+	
+	
+	
+	pull_file_list();
+	
+	</script>
 </body>
 </html>
