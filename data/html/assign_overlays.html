@@ -348,8 +348,8 @@ function save_assignments() {
 async function load_assignments() {
 	/*
 	const [data1, data2] = await Promise.all([
-		fetch(base_url+'/overlays'),
-		fetch(base_url+'/files'),
+		fetch(base_url+'/overlay_file_list'),
+		fetch(base_url+'/file_list'),
 	])
 		.then(async (response) => {
 			return Promise.all(
@@ -359,8 +359,8 @@ async function load_assignments() {
 	*/
 
 	const [data1, data2] = await Promise.all([
-		fetch(base_url+'/overlays'),
-		fetch(base_url+'/files'),
+		fetch(base_url+'/overlay_file_list'),
+		fetch(base_url+'/file_list'),
 	]);		
 
 	const rt1 = await data1.text();

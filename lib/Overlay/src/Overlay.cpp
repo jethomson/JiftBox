@@ -41,6 +41,7 @@ uint32_t read32(fs::File &f) {
 //TODO: delete sprites before creating new ones
 void load_sprites(vector<string> overlay_fnames) {
   sprites.clear();
+  Serial.println("sprites clear finished");
 
   if (load_overlays) {
     uint8_t sprite_cnt = 0;
@@ -57,7 +58,10 @@ void load_sprites(vector<string> overlay_fnames) {
         uint32_t seekOffset;
         uint16_t row, col;
         uint8_t  r, g, b;
-        uint16_t bmp_w, bmp_h;
+        uint32_t bmp_w;
+        int32_t bmp_h;
+        bool upside_down = true;
+        uint16_t* tptr;
 
         if (read16(entry) == 0x4D42) {
           read32(entry);
@@ -66,13 +70,22 @@ void load_sprites(vector<string> overlay_fnames) {
           read32(entry);
           bmp_w = read32(entry);
           bmp_h = read32(entry);
+          // normally BMP are stored upside down but if h is negative it indicates the BMP is stored upside up
+          if (bmp_h < 0) {
+            upside_down = false;
+            bmp_h = abs(bmp_h);
+          }
 
           if ((read16(entry) == 1) && (read16(entry) == 24) && (read32(entry) == 0)) {
             entry.seek(seekOffset);
-
             data = new uint16_t[bmp_h*bmp_w];
-            // start from the end because BMP are stored upside down
-            uint16_t* tptr = &data[(bmp_h*bmp_w)-1];
+            
+            if (upside_down) {
+              tptr = &data[(bmp_h*bmp_w)-1]; // start from the end because BMP are stored upside down
+            }
+            else {
+              tptr = &data[0];
+            }
 
             uint16_t padding = (4 - ((bmp_w * 3) & 3)) & 3;
             uint8_t lineBuffer[bmp_w * 3 + padding];
@@ -85,7 +98,12 @@ void load_sprites(vector<string> overlay_fnames) {
                 b = *bptr++;
                 g = *bptr++;
                 r = *bptr++;
-                *tptr-- = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
+                if (upside_down) {
+                  *tptr-- = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
+                }
+                else {
+                  *tptr++ = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
+                }
               }
             }
           }
@@ -167,11 +185,14 @@ void handle_overlay(std::string imgname, TFT_eSprite* background) {
   static vector<overlay> overlays;  
 
   if(prev_imgname != imgname) {
+    Serial.println("new image");
   // this section only runs when the next image is loaded
     prev_imgname = imgname;
     attributes.filenames.clear();
     attributes.num_instances.clear();
     overlays.clear();
+
+    Serial.println("clear finished");
 
     size_t match_start = 0;
     size_t match_end = 0;
@@ -195,7 +216,9 @@ void handle_overlay(std::string imgname, TFT_eSprite* background) {
       return;
     }
 
+    Serial.println("load_sprites start");
     load_sprites(attributes.filenames);
+    Serial.println("load_sprites finish");
 
     Serial.println(esp_get_free_heap_size());
 
@@ -243,6 +266,7 @@ void handle_overlay(std::string imgname, TFT_eSprite* background) {
         i++;
       }
     }
+    Serial.println("defining overlays finished");
   }
   
   // below here runs every time

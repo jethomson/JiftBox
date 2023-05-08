@@ -99,27 +99,32 @@ void handle_file_upload(AsyncWebServerRequest *request, const String &filename, 
     if (fs_file) {
       delay(1); 
       fs_file.close();
-      file_upload_success = true;
     }
 
     fs_file = LittleFS.open(filename, "w");
   }
 
-  for(size_t i = 0; i < len; i++){
-    fs_file.write(data[i]);
-  }
-
-  if (final) {
-    if (fs_file) {
-      delay(1); 
-      fs_file.close();
+  if (fs_file) {
+    for(size_t i = 0; i < len; i++){
+      fs_file.write(data[i]);
     }
 
-    DEBUG_PRINTF("upload complete: %s, %u B\n", filename.c_str(), index+len);
-    DEBUG_CONSOLE.flush();
-    file_upload_success = true;
-  }
+    if (final) {
+      if (fs_file) {
+        delay(1); 
+        fs_file.close();
+      }
 
+      DEBUG_PRINTF("upload complete: %s, %u B\n", filename.c_str(), index+len);
+      DEBUG_CONSOLE.flush();
+      file_upload_success = true;
+    }
+  }
+  else if (final) {
+      DEBUG_PRINTF("upload failed: %s, %u B\n", filename.c_str(), index+len);
+      DEBUG_CONSOLE.flush();
+      file_upload_success = false;
+  }
 }
 
 void handle_folder_upload(AsyncWebServerRequest *request, const String &param_path, size_t index, uint8_t *data, size_t len, bool final) {
@@ -488,9 +493,77 @@ void web_server_initiate(void) {
       request->send(LittleFS, "/html/overlay.html", String(), false, processor);
     });
 
+    web_server.on("/assign_overlays.html", HTTP_GET, [](AsyncWebServerRequest *request) {
+      request->send(LittleFS, "/html/assign_overlays.html");
+    });
+
     web_server.on("/overlay_assignment.json", HTTP_GET, [](AsyncWebServerRequest *request) {
       request->send(LittleFS, "/overlay_assignment.json");
     });
+
+
+    //DEBUGGING corrupted phone overlays
+    web_server.on("/overlays/skullphone.bmp", HTTP_GET, [](AsyncWebServerRequest *request) {
+      request->send(LittleFS, "/overlays/skullphone.bmp");
+    });
+
+    web_server.on("/overlays/skullpc.bmp", HTTP_GET, [](AsyncWebServerRequest *request) {
+      request->send(LittleFS, "/overlays/skullpc.bmp");
+    });
+
+    web_server.on("/overlays/rad.bmp", HTTP_GET, [](AsyncWebServerRequest *request) {
+      request->send(LittleFS, "/overlays/rad.bmp");
+    });
+
+    web_server.on("/overlays/radpc.bmp", HTTP_GET, [](AsyncWebServerRequest *request) {
+      request->send(LittleFS, "/overlays/radpc.bmp");
+    });
+
+    web_server.on("/overlays/test.bmp", HTTP_GET, [](AsyncWebServerRequest *request) {
+      request->send(LittleFS, "/overlays/test.bmp");
+    });
+
+    web_server.on("/post_test", HTTP_POST, [](AsyncWebServerRequest *request) {
+      //List all parameters
+      int params = request->params();
+      for(int i=0;i<params;i++){
+        AsyncWebParameter* p = request->getParam(i);
+        if(p->isFile()){ //p->isPost() is also true
+          Serial.printf("FILE[%s]: %s, size: %u\n", p->name().c_str(), p->value().c_str(), p->size());
+        } else if(p->isPost()){
+          Serial.printf("POST[%s]: %s\n", p->name().c_str(), p->value().c_str());
+        } else {
+          Serial.printf("GET[%s]: %s\n", p->name().c_str(), p->value().c_str());
+        }
+      }
+
+      //Check if GET parameter exists
+      if(request->hasParam("download"))
+        AsyncWebParameter* p = request->getParam("download");
+
+      //Check if POST (but not File) parameter exists
+      if(request->hasParam("download", true))
+        AsyncWebParameter* p = request->getParam("download", true);
+
+      //Check if FILE was uploaded
+      if(request->hasParam("download", true, true))
+        AsyncWebParameter* p = request->getParam("download", true, true);
+
+      //List all parameters (Compatibility)
+      int args = request->args();
+      for(int i=0;i<args;i++){
+        Serial.printf("ARG[%s]: %s\n", request->argName(i).c_str(), request->arg(i).c_str());
+      }
+
+      //Check if parameter exists (Compatibility)
+      if(request->hasArg("download"))
+        String arg = request->arg("download");
+
+      //request->send(200, "text/plain", "POST received");
+    });
+
+
+
 
     //OTA update via web page
     //AsyncCallbackWebHandler& on(const char* uri, WebRequestMethodComposite method, ArRequestHandlerFunction onRequest, ArUploadHandlerFunction onUpload);
@@ -507,11 +580,11 @@ void web_server_initiate(void) {
       }
     }, handle_file_upload);
 
-    web_server.on("/files", HTTP_GET, [](AsyncWebServerRequest *request) {
+    web_server.on("/file_list", HTTP_GET, [](AsyncWebServerRequest *request) {
       request->send(200, "text/plain", file_list);
     });
 
-    web_server.on("/overlays", HTTP_GET, [](AsyncWebServerRequest *request) {
+    web_server.on("/overlay_file_list", HTTP_GET, [](AsyncWebServerRequest *request) {
       request->send(200, "text/plain", overlay_list);
     });
 

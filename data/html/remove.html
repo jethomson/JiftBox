@@ -230,7 +230,7 @@ function pull_file_list() {
 	xmlhttp.onabort   = function() {console.log("onabort")};
 	xmlhttp.ontimeout = function() {console.log("ontimeout")};
 
-	url = "/files";
+	url = "/file_list";
 	if (window.location.protocol == "file:") {
 		// makes for easier debugging.
 		// if html is loaded locally, can see the results of editing more easily.
