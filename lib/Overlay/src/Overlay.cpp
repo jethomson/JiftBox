@@ -41,7 +41,6 @@ uint32_t read32(fs::File &f) {
 //TODO: delete sprites before creating new ones
 void load_sprites(vector<string> overlay_fnames) {
   sprites.clear();
-  Serial.println("sprites clear finished");
 
   if (load_overlays) {
     uint8_t sprite_cnt = 0;
@@ -185,14 +184,11 @@ void handle_overlay(std::string imgname, TFT_eSprite* background) {
   static vector<overlay> overlays;  
 
   if(prev_imgname != imgname) {
-    Serial.println("new image");
   // this section only runs when the next image is loaded
     prev_imgname = imgname;
     attributes.filenames.clear();
     attributes.num_instances.clear();
     overlays.clear();
-
-    Serial.println("clear finished");
 
     size_t match_start = 0;
     size_t match_end = 0;
@@ -216,9 +212,7 @@ void handle_overlay(std::string imgname, TFT_eSprite* background) {
       return;
     }
 
-    Serial.println("load_sprites start");
     load_sprites(attributes.filenames);
-    Serial.println("load_sprites finish");
 
     Serial.println(esp_get_free_heap_size());
 
@@ -266,7 +260,6 @@ void handle_overlay(std::string imgname, TFT_eSprite* background) {
         i++;
       }
     }
-    Serial.println("defining overlays finished");
   }
   
   // below here runs every time

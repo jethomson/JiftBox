@@ -137,7 +137,6 @@
 			<input type="button" name="emoji" value="🛸">
 			<input type="button" name="emoji" value="☢️">
 			<input type="button" name="emoji" value="💣">
-			<canvas id="canvas"></canvas>
 			<br>
 			<div>White border represents size of display. Dark green background represents transparency. Pick an overlay size:</div>
 			<div name="display_border">
@@ -163,7 +162,7 @@
 			<br>
 			<!--LittleFS implementation for the ESP8266 supports filenames of up to 31 characters + terminating zero. 31 - 4 (.bmp) = 27 -->
 			<div style="display:flex;justify-content:center;align-items:center;">
-				<label>Filename: </label><input type="text" id="filename" maxlength="27" placeholder="Enter unique filename to save overlay image as." style="width: 100%" required><label>.bmp</label>
+				<label>Filename: </label><input type="text" id="filename" maxlength="27" pattern="[a-zA-Z0-9]{1,27}" placeholder="Up to 27 letters and numbers are allowed." style="width: 100%" required><label>.bmp</label>
 			</div>
 			<button type="submit">Upload</button>
 		</form>
@@ -422,7 +421,7 @@
 	//const cwidth = Math.round(0.5*mdim);
 	const cwidth = Math.round(0.25*mdim);
 	const cheight = cwidth;
-	
+
 	const font_family = "Arial";
 	const font_size = Math.round(0.80*cwidth) + "px";
 	
@@ -430,7 +429,8 @@
 	const factor_medium = 0.75;
 	const factor_large = 1.00;
 
-	let ctx = document.getElementById('canvas').getContext('2d');
+	let dcanvas = document.createElement('canvas'); 
+	let ucanvas = document.createElement('canvas');
 	let input = document.getElementById('input_text');
 	
 	let radio_small = document.getElementById('radio_small');
@@ -445,6 +445,16 @@
 		nodeList[i].style.width = display_width + "px";
 		nodeList[i].style.height = display_height + "px";
 	}
+
+
+	const ratio = window.devicePixelRatio;
+
+	// canvas for display. setup to take into account devicePixelRatio
+	dcanvas.style.width = cwidth + "px";
+	dcanvas.style.height = cheight + "px";
+	dcanvas.width = Math.floor(cwidth * ratio);
+	dcanvas.height = Math.floor(cheight * ratio)
+	dcanvas.getContext("2d").scale(ratio, ratio);
 
 	input.style.width = display_width + "px";
 	input.style.fontFamily = font_family;
@@ -461,63 +471,44 @@
 	image_large.style.width = factor_large*cwidth + 'px';
 	image_large.style.height = factor_large*cheight + 'px';
 
-
-	function createHiPPICanvas(width, height) {
-		const ratio = window.devicePixelRatio;
-		const canvas = document.getElementById('canvas');
-
-		canvas.width = width * ratio;
-		canvas.height = height * ratio;
-		canvas.style.width = width + "px";
-		canvas.style.height = height + "px";
-		canvas.getContext("2d").scale(ratio, ratio);
-	}
-
-	function convert(text) {
-		document.getElementById('input_text').value = text;
-
+	
+	function set_attributes(ctx, text) {
 		ctx.font = font_size +" "+ font_family;
-		ctx.fillStyle = "#002400"; // transparent background
+		ctx.fillStyle = "#002400"; // green color TFT eSPI to indicate transparency. create transparent background
 		ctx.fillRect(0, 0, cwidth, cheight);
 
 		ctx.textAlign = 'center';
 		ctx.textBaseline = 'middle';
 		ctx.fillStyle = "#FFFFFF"; // font color
 		ctx.fillText(text, cwidth/2, cheight/2);
+	}
 
-		console.log(text);
+	function convert(text) {
+		document.getElementById('input_text').value = text;
 		
-		//ctx.fillStyle = "#880203";
-		//ctx.fillRect(0, 0, cwidth, cheight);
+		let dctx = dcanvas.getContext('2d');
 
-		image_small.src = ctx.canvas.toDataURL('image/bmp');
-		image_medium.src = ctx.canvas.toDataURL('image/bmp');
-		console.log(image_medium.src);
-		image_large.src = ctx.canvas.toDataURL('image/bmp');
+		set_attributes(dctx, text);
+		
+		image_small.src = dctx.canvas.toDataURL('image/bmp');
+		image_medium.src = dctx.canvas.toDataURL('image/bmp');
+		image_large.src = dctx.canvas.toDataURL('image/bmp');
+
+		// setting the upload context separately produces a better image than scaling down uctx by ratio and using uctx.drawImage(dcanvas, 0, 0)
+		let factor = document.querySelector('[type=radio]:checked').value;		
+		ucanvas.style.width = factor * cwidth + 'px';
+		ucanvas.style.height = factor * cheight + 'px';
+		ucanvas.width = factor * cwidth;
+		ucanvas.height = factor * cheight;
+		
+		let uctx = ucanvas.getContext('2d');
+		uctx.scale(factor, factor);
+		set_attributes(uctx, text);
 	}
 
 	function upload() {
-		const ratio = window.devicePixelRatio;
-		const original_canvas = document.getElementById('canvas');
-		
-		let factor = document.querySelector('[type=radio]:checked').value;
-
-		let new_canvas = document.createElement('canvas');
-		//let new_canvas = document.getElementById("canvas_tmp");
-		let context = new_canvas.getContext('2d');
-
-		new_canvas.width = factor * original_canvas.width;
-		new_canvas.height = factor * original_canvas.height;
-		
-		new_canvas.style.width = (factor * original_canvas.width) + 'px';
-		new_canvas.style.height = (factor * original_canvas.height) + 'px';
-		
-		new_canvas.getContext("2d").scale(factor * ratio, factor * ratio);
-
-		context.drawImage(original_canvas, 0, 0);
-
-		//new_canvas.toBlob((blob) => { // Chrome will not convert blob to PNG so use custom code
-		CanvasToBMP.toBlob(new_canvas, 3, (blob) => {
+		//ucanvas.toBlob((blob) => { // Chrome will not convert blob to PNG so use custom code
+		CanvasToBMP.toBlob(ucanvas, 3, (blob) => {
 			const filename = '/overlays/' + document.getElementById('filename').value + '.bmp';
 			let data = new FormData();
 			data.append("upload", blob, filename);
@@ -527,8 +518,6 @@
 		}, 'image/bmp');
 	}
 
-
-	createHiPPICanvas(cwidth, cheight);
 	input.addEventListener('input', function(){convert(this.value)}, false);
 	
 	const emojiList = document.querySelectorAll('[name="emoji"]');
