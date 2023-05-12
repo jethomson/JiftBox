@@ -11,7 +11,7 @@
 		color: #eaeaea;
 		text-align: center;
 		font-family: verdana, sans-serif;
-		background: #000000;
+		background: black;
 		/*zoom: 2;
 		-moz-transform: scale(2);
 		-moz-transform-origin: 0 0;*/
@@ -138,6 +138,7 @@
 			<input type="button" name="emoji" value="☢️">
 			<input type="button" name="emoji" value="💣">
 			<br>
+			<label>Angle: <input id="angle" type="number" min=0 max=360></label>
 			<div>White border represents size of display. Dark green background represents transparency. Pick an overlay size:</div>
 			<div name="display_border">
 			<label>
@@ -181,7 +182,7 @@
 	*/
 	
 	/*
-	  Modified by Jonathan Thomson, 2023, to convert to 24-bit BMP.
+	  Modified by Jonathan Thomson, 2023, to convert to 16-bit or 24-bit BMP.
 	*/
 	/**
 	 * Static helper object that can convert a CORS-compliant canvas element
@@ -203,74 +204,98 @@
 		 * @param {function} callback - called when conversion is done. Argument is ArrayBuffer
 		 * @static
 		 */
-		toArrayBuffer: function(canvas, channels = 3, callback) {
+		toArrayBuffer: function(canvas, bpp = 16, callback) {
 	
-			var bpp = (channels == 4) ? 32 : 24,             // bits per pixel
-			  w              = canvas.width,
-			  h              = canvas.height,
-			  wc = w * channels,                           // width * channels
-			  idata          = canvas.getContext("2d").getImageData(0, 0, w, h),
-			  data32         = new Uint32Array(idata.data.buffer),
+			let w              = canvas.width,
+			    h              = canvas.height,
+			    wb = w * bpp/8,                               // width * bytes per pixel
+			    idata          = canvas.getContext("2d").getImageData(0, 0, w, h),
+			    data32         = new Uint32Array(idata.data.buffer),
 	
-			  //stride         = ((32 * w + 31) / 32) << 2,
-			  stride = Math.floor((bpp * w + 31) / 32) * 4, // row length incl. padding
-			  pixelArraySize = stride * h,
-			  fileLength     = 122 + pixelArraySize,
+			    //stride         = ((32 * w + 31) / 32) << 2,
+			    stride = Math.floor((bpp * w + 31) / 32) * 4, // row length incl. padding
+			    pixelArraySize = stride * h,
+			    fileLength     = 122 + pixelArraySize,
 	
-			  file           = new ArrayBuffer(fileLength),
-			  view           = new DataView(file),
-			  blockSize      = 1 << 20,
-			  block          = blockSize,
-			  y = 0, x, v, a, pos = 0, p, s = 0;
-	
+			    file           = new ArrayBuffer(fileLength),
+			    view           = new DataView(file),
+			    blockSize      = 1 << 20,
+			    block          = blockSize,
+			    y = 0, x, v, a, pos = 0, p, s = 0;
+			    
+			const offset = 0x7a;
+			//const ppm = 2835;               // pixels/meter h (~72 DPI x 39.3701 inch/m) print size. not important.
+			const ppm = 11811;                // pixels/meter h (~300 DPI)
+			console.log(stride);
+			console.log(fileLength);
+
 			// Header
-			set16(0x4d42);                   // BM
-			set32(fileLength);               // total length
-			seek(4);                         // skip unused fields
-			set32(0x7a);                     // offset to pixels
+			set16(0x4d42);                    // BM
+			set32(fileLength);                // total length
+			seek(4);                          // skip unused fields
+			set32(offset);                    // offset to pixels
 			
 			// DIB header
-			set32(0x6c);                     // header size (108)
+			set32(0x6c);                      // header size (108)
 			set32(w);
-			set32(-h >>> 0);                 // negative = top-to-bottom
-			set16(1);                        // 1 plane
-			set16(bpp);                      // 32-bits (RGBA)
-			if (channels == 4) set32(3);     // no compression (BI_BITFIELDS, 3)
-			else set32(0);                   // no compression (BI_RGB, 0)
-			set32(pixelArraySize);           // bitmap size incl. padding (stride x height)
-			set32(2835);                     // pixels/meter h (~72 DPI x 39.3701 inch/m)
-			set32(2835);                     // pixels/meter v
-			seek(8);                         // skip color/important colors
-			set32(0xff0000);                      // red channel mask
-			set32(0xff00);                        // green channel mask
-			set32(0xff);                          // blue channel mask
-			if (channels == 4) set32(0xff000000); // alpha channel mask
-			else set32(0x00000000);               // no alpha channel mask
-			set32(0x57696e20);               // " win" color space
-			//setU32(0x73524742);            // ??? gimp color space
+			// this effects how the BMP is decoded but not encoded
+			// all BMP encoded by this code are stored upside-up
+			// using set32(h) will result in being displayed as upside-down
+			set32(-h >>> 0);                  // negative height = top-to-bottom
+			set16(1);                         // 1 plane
+			set16(bpp);                       // 16, 24, or 32-bits
+			if (bpp == 32 || bpp == 16) set32(3); // no compression (BI_BITFIELDS, 3)
+			else set32(0);                    // no compression (BI_RGB, 0)
+			set32(pixelArraySize);            // bitmap size incl. padding (stride x height)
+			set32(ppm);                       // pixels/meter h (~72 DPI x 39.3701 inch/m)
+			set32(ppm);                       // pixels/meter v
+			seek(8);                          // skip color/important colors
+			if (bpp == 16) set32(0x0000f800); // red channel mask
+			else set32(0x00ff0000);           // red channel mask
+			if (bpp == 16) set32(0x000007e0); // green channel mask
+			else set32(0x0000ff00);           // green channel mask
+			if (bpp == 16) set32(0x0000001f); // blue channel mask
+			else set32(0x000000ff);           // blue channel mask
 			
+			if (bpp == 32) set32(0xff000000); // alpha channel mask
+			else set32(0x00000000);           // no alpha channel mask
+			set32(0x57696e20);                // " win" color space
+			//set32(0x73524742);              // ??? gimp color space
+			//set32(0x00000000);
+
+
 			(function convert() {
 			
 				// bitmap data, change order of ABGR to BGRA (msb-order)
 				while(y < h && block > 0) {
-					p = 0x7a + y * stride;            // offset + stride x height
+					p = offset + y * stride;            // offset + stride x height
 					x = 0;
 			
-					while(x < wc) {
+					while(x < wb) {
 						block--;
-						v = data32[s++];            // get ABGR
+						v = data32[s++];                       // get ABGR
 						a = v >>> 24;                          // alpha channel
-						b = v >>> 16 & 0xFF;                   //blue channel
-						g = v >>>  8 & 0xFF;                   //green channel
-						r = v & 0xFF;                          //red channel
-						view.setUint8(p + x, b);
-						x++;
-						view.setUint8(p + x, g);
-						x++;
-						view.setUint8(p + x, r);
-						x++;
-						if (channels == 4) {
-							view.setUint8(p + x, a);
+						b = v >>> 16 & 0xFF;                   // blue channel
+						g = v >>>  8 & 0xFF;                   // green channel
+						r = v & 0xFF;                          // red channel
+						
+						if (bpp == 24 || bpp == 32) {
+							view.setUint8(p + x, b);
+							x++;
+							view.setUint8(p + x, g);
+							x++;
+							view.setUint8(p + x, r);
+							x++;
+							if (bpp == 32) {
+								view.setUint8(p + x, a);
+								x++;
+							}
+						}
+						else {
+							pix16 = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
+							view.setUint8(p + x, pix16);
+							x++;
+							view.setUint8(p + x, pix16 >>> 8);
 							x++;
 						}
 					}
@@ -310,8 +335,8 @@
 			 * @param {function} callback - called when conversion is done. Argument is a Blob
 			 * @static
 			 */
-			toBlob: function(canvas, channels = 3, callback) {
-				this.toArrayBuffer(canvas, channels, function(file) {
+			toBlob: function(canvas, bpp = 16, callback) {
+				this.toArrayBuffer(canvas, bpp, function(file) {
 					callback(new Blob([file], {type: "image/bmp"}));
 				});
 			},
@@ -333,8 +358,8 @@
 			 * @param {function} callback - called when conversion is done. Argument is a Blob
 			 * @static
 			 */
-			toObjectURL: function(canvas, channels = 3, callback) {
-				this.toBlob(canvas, channels, function(blob) {
+			toObjectURL: function(canvas, bpp = 16, callback) {
+				this.toBlob(canvas, bpp, function(blob) {
 					var url = self.URL || self.webkitURL || self;
 					callback(url.createObjectURL(blob))
 				});
@@ -350,9 +375,9 @@
 			 * @param {function} callback - called when conversion is done. Argument is an data-URI (string)
 			 * @static
 			 */
-			toDataURL: function(canvas, channels = 3, callback) {
+			toDataURL: function(canvas, bpp = 16, callback) {
 			
-				this.toArrayBuffer(canvas, channels, function(file) {
+				this.toArrayBuffer(canvas, bpp, function(file) {
 					var buffer = new Uint8Array(file),
 						blockSize = 1<<20,
 						block = blockSize,
@@ -419,8 +444,10 @@
 	const mdim = Math.max(display_width, display_height);
 
 	//const cwidth = Math.round(0.5*mdim);
-	const cwidth = Math.round(0.25*mdim);
+	const cwidth = 2*Math.floor(Math.round(0.25*mdim)/2.0)+1; // always odd so there is even space around center
 	const cheight = cwidth;
+	const ccenter = Math.round(cwidth/2.0);
+	//console.log(`${cwidth}, ${cheight}, ${ccenter}`);
 
 	const font_family = "Arial";
 	const font_size = Math.round(0.80*cwidth) + "px";
@@ -473,18 +500,40 @@
 
 	
 	function set_attributes(ctx, text) {
-		ctx.font = font_size +" "+ font_family;
+
 		ctx.fillStyle = "#002400"; // green color TFT eSPI to indicate transparency. create transparent background
 		ctx.fillRect(0, 0, cwidth, cheight);
+		
+		ctx.translate(ccenter, ccenter);
+		const angle = document.getElementById('angle').value;
+		ctx.rotate((angle * Math.PI) / 180);
+		ctx.translate(-ccenter, -ccenter);
 
+		ctx.font = font_size +" "+ font_family;
 		ctx.textAlign = 'center';
 		ctx.textBaseline = 'middle';
 		ctx.fillStyle = "#FFFFFF"; // font color
-		ctx.fillText(text, cwidth/2, cheight/2);
+		ctx.fillText(text, ccenter, ccenter+Math.round(ccenter/7.5)); //fudge the y pos of center a little to get more even padding top and bottom
+		
+		ctx.setTransform(1, 0, 0, 1, 0, 0);
+		
+		/*
+		ctx.fillStyle = "#FF0000"; // DEBUGGING
+		ctx.fillRect(0, 0, Math.round(1.0*cwidth/3.0), cheight);
+		ctx.fillStyle = "#00FF00"; // DEBUGGING
+		ctx.fillRect(Math.round(1.0*cwidth/3.0), 0, Math.round(2.0*cwidth/3.0), cheight);
+		ctx.fillStyle = "#0000FF"; // DEBUGGING
+		ctx.fillRect(Math.round(2.0*cwidth/3.0)+1, 0, cwidth, cheight);
+		*/
 	}
 
 	function convert(text) {
-		document.getElementById('input_text').value = text;
+		if (text != '') {
+			document.getElementById('input_text').value = text;
+		}
+		else {
+			text = document.getElementById('input_text').value;
+		}
 		
 		let dctx = dcanvas.getContext('2d');
 
@@ -508,7 +557,7 @@
 
 	function upload() {
 		//ucanvas.toBlob((blob) => { // Chrome will not convert blob to PNG so use custom code
-		CanvasToBMP.toBlob(ucanvas, 3, (blob) => {
+		CanvasToBMP.toBlob(ucanvas, 16, (blob) => {
 			const filename = '/overlays/' + document.getElementById('filename').value + '.bmp';
 			let data = new FormData();
 			data.append("upload", blob, filename);
@@ -524,6 +573,12 @@
 	for (let i = 0; i < emojiList.length; i++) {
 		emojiList[i].addEventListener('click', function(){convert(this.value)}, false);
 	}
+	const sizeList = document.querySelectorAll('[name="size"]');
+	for (let i = 0; i < sizeList.length; i++) {
+		// need to run convert when size changes but do not want to change text so use ''
+		sizeList[i].addEventListener('click', function(){convert('')}, false);
+	}
+	document.getElementById('angle').addEventListener('change', function(){convert('')}, false);
 
 	var event = new Event('input');
 	input.dispatchEvent(event);

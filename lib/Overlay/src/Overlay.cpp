@@ -56,11 +56,28 @@ void load_sprites(vector<string> overlay_fnames) {
 
         uint32_t seekOffset;
         uint16_t row, col;
-        uint8_t  r, g, b;
+        uint8_t  b1, b2, b3;
         uint32_t bmp_w;
         int32_t bmp_h;
+        uint16_t planes;
+        uint16_t bpp;
+        uint32_t comp;
         bool upside_down = true;
         uint16_t* tptr;
+        /*
+			// Header
+			set16(0x4d42);                   // BM
+			set32(fileLength);               // total length
+			seek(4);                         // skip unused fields
+			set32(0x7a);                     // offset to pixels
+			
+			// DIB header
+			set32(0x6c);                     // header size (108)
+			set32(w);
+			set32(-h >>> 0);                 // negative = top-to-bottom
+			set16(1);                        // 1 plane
+			set16(bpp);                      // 16, 24, or 32-bits
+        */
 
         if (read16(entry) == 0x4D42) {
           read32(entry);
@@ -69,59 +86,111 @@ void load_sprites(vector<string> overlay_fnames) {
           read32(entry);
           bmp_w = read32(entry);
           bmp_h = read32(entry);
+          planes = read16(entry);
+          bpp = read16(entry);
+          comp = read32(entry);
           // normally BMP are stored upside down but if h is negative it indicates the BMP is stored upside up
           if (bmp_h < 0) {
             upside_down = false;
             bmp_h = abs(bmp_h);
           }
 
-          if ((read16(entry) == 1) && (read16(entry) == 24) && (read32(entry) == 0)) {
+
+          Serial.print("planes: ");
+          Serial.println(planes);
+
+          Serial.print("bpp: ");
+          Serial.println(bpp);
+
+          Serial.print("comp: ");
+          Serial.println(comp);
+
+          // why does this function crash if a sprite isn't loaded
+
+          //if ((planes == 1) && (bpp == 16 || bpp == 24) && (comp == 0)) {
+          if ((planes == 1) && (bpp == 16 || bpp == 24)) {  // gimp creates 16 bit bmp with comp 3 
+
             entry.seek(seekOffset);
             data = new uint16_t[bmp_h*bmp_w];
             
             if (upside_down) {
-              tptr = &data[(bmp_h*bmp_w)-1]; // start from the end because BMP are stored upside down
+              tptr = &data[(bmp_h*bmp_w)-1]; // writing to data from finish to end will flip the image
             }
             else {
-              tptr = &data[0];
+              tptr = data;
             }
 
-            uint16_t padding = (4 - ((bmp_w * 3) & 3)) & 3;
-            uint8_t lineBuffer[bmp_w * 3 + padding];
+
+            Serial.print("upside_down: ");
+            Serial.println(upside_down);
+
+
+            uint8_t bytespp = bpp/8;
+            uint16_t padding = (4 - ((bmp_w * bytespp) & bytespp)) & bytespp;
+            uint8_t lineBuffer[bmp_w * bytespp + padding];
 
             for (row = 0; row < bmp_h; row++) {
               entry.read(lineBuffer, sizeof(lineBuffer));
-              uint8_t* bptr = lineBuffer;
-              // Convert 24 to 16 bit colours
-              for (uint16_t col = 0; col < bmp_w; col++) {
-                b = *bptr++;
-                g = *bptr++;
-                r = *bptr++;
-                if (upside_down) {
-                  *tptr-- = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
+              uint8_t* bptr;
+              if (upside_down) {
+                //(bmp_w * bytespp) + padding - 1 is the last byte of the lineBuffer
+                //but we do not want to read the padding so use: (bmp_w * bytespp) + padding - 1 - padding = (bmp_w * bytespp)-1
+                bptr = &lineBuffer[(bmp_w * bytespp)-1];
+              }
+              else {
+                bptr = lineBuffer;
+              }
+              if (bpp == 24) {
+                // convert 24 bit to 16 bit
+                for (uint16_t col = 0; col < bmp_w; col++) {
+                  if (upside_down) {
+                    b3 = *bptr--;  // red
+                    b2 = *bptr--;  // green
+                    b1 = *bptr--;  // blue
+                    *tptr-- = ((b3 & 0xF8) << 8) | ((b2 & 0xFC) << 3) | (b1 >> 3);
+                  }
+                  else {
+                    b1 = *bptr++;  // blue
+                    b2 = *bptr++;  // green
+                    b3 = *bptr++;  // red
+                    *tptr++ = ((b3 & 0xF8) << 8) | ((b2 & 0xFC) << 3) | (b1 >> 3);
+                  }
                 }
-                else {
-                  *tptr++ = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
+              }
+              else { // 16 bit
+                for (uint16_t col = 0; col < bmp_w; col++) {
+                  if (upside_down) {
+                    b2 = *bptr--;  // byte 2
+                    b1 = *bptr--;  // byte 1
+                    *tptr-- = (b2 << 8) | b1;
+                  }
+                  else {
+                    b1 = *bptr++;  // byte 1
+                    b2 = *bptr++;  // byte 2
+                    *tptr++ = (b2 << 8) | b1;
+                  }
                 }
               }
             }
-          }
-          else Serial.println("BMP format not recognized.");
-        }
-        sprites.push_back(std::unique_ptr<TFT_eSprite>(new TFT_eSprite(_tft)));
-        //sprites.push_back(std::make_unique<TFT_eSprite>(_tft));
 
-        sprites[sprite_cnt]->setColorDepth(16);
-        sprites[sprite_cnt]->createSprite(bmp_w, bmp_h);
-        if (!sprites[sprite_cnt]->created()) {
-          Serial.println("Overlay creation failed!");
+            sprites.push_back(std::unique_ptr<TFT_eSprite>(new TFT_eSprite(_tft)));
+            //sprites.push_back(std::make_unique<TFT_eSprite>(_tft));
+
+            sprites[sprite_cnt]->setColorDepth(16);
+            sprites[sprite_cnt]->createSprite(bmp_w, bmp_h);
+            if (!sprites[sprite_cnt]->created()) {
+              Serial.println("Overlay creation failed!");
+            }
+            sprites[sprite_cnt]->setSwapBytes(true);
+            // pushImage() makes a copy of data, so data can be deleted.
+            sprites[sprite_cnt]->pushImage(0, 0, bmp_w, bmp_h, data);
+            delete data;
+            sprite_cnt++;
+          }
+          else {
+            Serial.println("BMP format not recognized.");
+          }
         }
-        sprites[sprite_cnt]->setSwapBytes(true);
-        // pushImage() makes a copy of data, so data can be deleted.
-        sprites[sprite_cnt]->pushImage(0, 0, bmp_w, bmp_h, data);
-        delete data;
-        
-        sprite_cnt++;
       }
       entry.close();
     }
@@ -213,6 +282,8 @@ void handle_overlay(std::string imgname, TFT_eSprite* background) {
     }
 
     load_sprites(attributes.filenames);
+
+    // TODO: need to fix crash if overlay is referenced but does not exist
 
     Serial.println(esp_get_free_heap_size());
 

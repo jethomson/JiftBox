@@ -503,25 +503,35 @@ void web_server_initiate(void) {
 
 
     //DEBUGGING corrupted phone overlays
-    web_server.on("/overlays/skullphone.bmp", HTTP_GET, [](AsyncWebServerRequest *request) {
-      request->send(LittleFS, "/overlays/skullphone.bmp");
+    web_server.on("/overlays/overlay2.bmp", HTTP_GET, [](AsyncWebServerRequest *request) {
+      request->send(LittleFS, "/overlays/overlay2.bmp");
+    });
+/*
+    web_server.on("/overlays/testfirefox.bmp", HTTP_GET, [](AsyncWebServerRequest *request) {
+      request->send(LittleFS, "/overlays/testfirefox.bmp");
     });
 
-    web_server.on("/overlays/skullpc.bmp", HTTP_GET, [](AsyncWebServerRequest *request) {
-      request->send(LittleFS, "/overlays/skullpc.bmp");
+    web_server.on("/overlays/testphone.bmp", HTTP_GET, [](AsyncWebServerRequest *request) {
+      request->send(LittleFS, "/overlays/testphone.bmp");
     });
 
-    web_server.on("/overlays/rad.bmp", HTTP_GET, [](AsyncWebServerRequest *request) {
-      request->send(LittleFS, "/overlays/rad.bmp");
+    web_server.on("/overlays/testchrome.bmp", HTTP_GET, [](AsyncWebServerRequest *request) {
+      request->send(LittleFS, "/overlays/testchrome.bmp");
+    });
+*/
+    web_server.on("/overlays/testgimp.bmp", HTTP_GET, [](AsyncWebServerRequest *request) {
+      request->send(LittleFS, "/overlays/testgimp.bmp");
     });
 
-    web_server.on("/overlays/radpc.bmp", HTTP_GET, [](AsyncWebServerRequest *request) {
-      request->send(LittleFS, "/overlays/radpc.bmp");
+    web_server.on("/overlays/testgimpncs.bmp", HTTP_GET, [](AsyncWebServerRequest *request) {
+      request->send(LittleFS, "/overlays/testgimpncs.bmp");
     });
 
     web_server.on("/overlays/test.bmp", HTTP_GET, [](AsyncWebServerRequest *request) {
       request->send(LittleFS, "/overlays/test.bmp");
     });
+
+
 
     web_server.on("/post_test", HTTP_POST, [](AsyncWebServerRequest *request) {
       //List all parameters
