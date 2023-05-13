@@ -278,6 +278,14 @@
 						b = v >>> 16 & 0xFF;                   // blue channel
 						g = v >>>  8 & 0xFF;                   // green channel
 						r = v & 0xFF;                          // red channel
+
+						
+						//if (r == 0x00 && g == 0x00 && b == 0x00) { // black
+						if (r == 0x29 && g == 0x2F && b == 0x33) { // #292F33
+						  r = 0x00;
+						  g = 0x24; // transparent for TFT_eSPI
+						  b = 0x00;
+						}
 						
 						if (bpp == 24 || bpp == 32) {
 							view.setUint8(p + x, b);
@@ -293,6 +301,12 @@
 						}
 						else {
 							pix16 = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
+							//if (pix16 == 0x0000) { // black
+							//if (pix16 == 0x2966) { // #292F33
+							//if (block % 4 == 0) { // semi-transparent
+							if (pix16 <= 0x3186) { // #333333
+							  pix16 = 0x0120; // (0x24 & 0xFC) << 3) transparent for TFT_eSPI
+							}
 							view.setUint8(p + x, pix16);
 							x++;
 							view.setUint8(p + x, pix16 >>> 8);
@@ -513,6 +527,7 @@
 		ctx.textAlign = 'center';
 		ctx.textBaseline = 'middle';
 		ctx.fillStyle = "#FFFFFF"; // font color
+                //ctx.fillStyle = "rgba(255, 255, 255, 0.5)"; // font color
 		ctx.fillText(text, ccenter, ccenter+Math.round(ccenter/7.5)); //fudge the y pos of center a little to get more even padding top and bottom
 		
 		ctx.setTransform(1, 0, 0, 1, 0, 0);
