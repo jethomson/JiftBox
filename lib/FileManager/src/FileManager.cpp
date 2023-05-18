@@ -232,7 +232,7 @@ void create_dirs(String path) {
 
 String file_list_tmp;
 String file_list;
-String overlay_list;
+String sprite_list;
 // NOTE: an empty folder will not be added when building a littlefs image.
 // Empty folders will not be created when uploaded either.
 void list_files(File dir, String parent) {
@@ -281,12 +281,12 @@ void handle_file_list(void) {
     file_list = file_list_tmp;
     file_list_tmp = "";
 
-    File overlay_root = LittleFS.open("/overlays");
-    if (overlay_root) {
-      list_files(overlay_root, "/");
-      overlay_root.close();
+    File sprite_root = LittleFS.open("/sprites");
+    if (sprite_root) {
+      list_files(sprite_root, "/");
+      sprite_root.close();
     }
-    overlay_list = file_list_tmp;
+    sprite_list = file_list_tmp;
     file_list_tmp = "";
   }
 }
@@ -449,7 +449,7 @@ String processor(const String& var) {
 
 String subst_file_links(const String& var) {
   if(var == "HELLO_FROM_TEMPLATE")
-    return overlay_list;
+    return sprite_list;
   return String();
 }
 
@@ -481,56 +481,36 @@ void web_server_initiate(void) {
       request->redirect("/");
     });
 
-    web_server.on("/overlay.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-      //String overlay_url = "/html/overlay.html?display_width=";
-      //overlay_url + String(width) + "&display_height=" + String(height);
-      request->send(LittleFS, "/html/overlay.html", String(), false, processor);
+    web_server.on("/add_sprite.html", HTTP_GET, [](AsyncWebServerRequest *request) {
+      //String sprite_url = "/html/sprite.html?display_width=";
+      //sprite_url + String(width) + "&display_height=" + String(height);
+      request->send(LittleFS, "/html/add_sprite.html", String(), false, processor);
     });
 
-    web_server.on("/assign_overlays.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-      request->send(LittleFS, "/html/assign_overlays.html", String(), false, processor);
+    web_server.on("/attach_sprites.html", HTTP_GET, [](AsyncWebServerRequest *request) {
+      request->send(LittleFS, "/html/attach_sprites.html", String(), false, processor);
     });
 
     web_server.serveStatic("/", LittleFS, "/html/");
 
-/*
-    web_server.on("/notfound.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-      request->send(LittleFS, "/html/notfound.html");
-    });
-
-    web_server.on("/upload.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-      request->send(LittleFS, "/html/upload.html");
-    });
-
-    web_server.on("/remove.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-      request->send(LittleFS, "/html/remove.html");
-    });
-
-    web_server.on("/network.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-      request->send(LittleFS, "/html/network.html");
-    });
-
-    web_server.on("/assign_overlays.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-      request->send(LittleFS, "/html/assign_overlays.html");
-    });
-*/
-
-    web_server.serveStatic("/images/", LittleFS, "/images/");
-
-    web_server.serveStatic("/overlays/", LittleFS, "/overlays/");
-
-    web_server.on("/overlay_assignment.json", HTTP_GET, [](AsyncWebServerRequest *request) {
-      request->send(LittleFS, "/overlay_assignment.json");
-    });
-
-
-    // serve all requests to  host/overlays/* (uri) from /littlefs/overlays/ (path)
+    // serve all requests to  host/sprites/* (uri) from /littlefs/sprites/ (path)
     // serveStatic(const char* uri, fs::FS& fs, const char* path, const char* cache_control = NULL)
-    //web_server.serveStatic("/overlays/", LittleFS, "/overlays/").setDefaultFile("notfound.html");
-    //AsyncStaticWebHandler* handler = &web_server.serveStatic("/overlays/", LittleFS, "/overlays/");
+    //web_server.serveStatic("/sprites/", LittleFS, "/sprites/").setDefaultFile("notfound.html");
+    //AsyncStaticWebHandler* handler = &web_server.serveStatic("/sprites/", LittleFS, "/sprites/");
     //handler->setDefaultFile("index.html");
     //handler->setTemplateProcessor(subst_file_links);
     //web_server.serveStatic("/images/", LittleFS, "/images/").setDefaultFile("notfound.html");
+
+    web_server.serveStatic("/images/", LittleFS, "/images/");
+
+    web_server.serveStatic("/sprites/", LittleFS, "/sprites/");
+
+    web_server.on("/sprite_settings.json", HTTP_GET, [](AsyncWebServerRequest *request) {
+      request->send(LittleFS, "/sprite_settings.json");
+    });
+
+
+
    
 
 
@@ -595,8 +575,8 @@ void web_server_initiate(void) {
       request->send(200, "text/plain", file_list);
     });
 
-    web_server.on("/overlay_file_list", HTTP_GET, [](AsyncWebServerRequest *request) {
-      request->send(200, "text/plain", overlay_list);
+    web_server.on("/sprite_file_list", HTTP_GET, [](AsyncWebServerRequest *request) {
+      request->send(200, "text/plain", sprite_list);
     });
 
     web_server.on("/delete", HTTP_POST, [](AsyncWebServerRequest *request) {

@@ -201,7 +201,7 @@ void load_sprites(overlay_attributes &attributes) {
 void overlay_setup(TFT_eSPI *tft) {
   _tft = tft;
   
-  File f = LittleFS.open("/overlay_assignment.json", "r");
+  File f = LittleFS.open("/sprite_settings.json", "r");
   if (f) {
     overlay_assignments_string = f.readString().c_str();
     if (overlay_assignments_string.length() > 0) {
