@@ -88,12 +88,9 @@
 	</style>
 </head>
 <body>
-
-
-
 	<div style="display:inline-block; min-width:340px;">
 		<div>
-		<form method='POST' onsubmit="event.preventDefault(); upload()">
+		<form method="POST" onsubmit="event.preventDefault(); upload()">
 			<div>Enter character(s):</div>
 			<input type="text" id="input_text" maxlength=2 required>
 			<input type="button" name="emoji" value="🙂">
@@ -161,11 +158,11 @@
 			</label>
 			</div>
 			<br>
-			<!--LittleFS implementation for the ESP8266 supports filenames of up to 31 characters + terminating zero. 31 - 4 (.bmp) = 27 -->
 			<div style="display:flex;justify-content:center;align-items:center;">
+				<!--LittleFS implementation for the ESP8266 supports filenames of up to 31 characters + terminating zero. 31 - 4 (.bmp) = 27 -->
 				<label>Filename: </label><input type="text" id="filename" maxlength="27" pattern="[a-zA-Z0-9]{1,27}" placeholder="Up to 27 letters and numbers are allowed." style="width: 100%" required><label>.bmp</label>
 			</div>
-			<button type="submit">Upload</button>
+			<button id="btn_upload_sprite" type="submit">Upload</button>
 		</form>
 		<a href="/"><button name="">Main Menu</button></a>
 		</div>
@@ -546,6 +543,7 @@
 	}
 
 	function convert(text) {
+		document.getElementById("btn_upload_sprite").textContent = "Upload";
 		if (text != '') {
 			document.getElementById('input_text').value = text;
 		}
@@ -573,6 +571,17 @@
 		set_attributes(uctx, text);
 	}
 
+	function upload_status(json) {
+		if (json["file_upload_status"] == 0) {
+			//console.log('File uploaded successfully.');
+			document.getElementById("btn_upload_sprite").textContent = "Upload Successful!";
+		}
+		else {
+			//console.log('File upload failed.');
+			document.getElementById("btn_upload_sprite").textContent = "Upload Failed :(";
+		}
+	}
+
 	function upload() {
 		//ucanvas.toBlob((blob) => { // Chrome will not convert blob to PNG so use custom code
 		CanvasToBMP.toBlob(ucanvas, 16, (blob) => {
@@ -580,8 +589,8 @@
 			let data = new FormData();
 			data.append("upload", blob, filename);
 			fetch(base_url+'/file_upload', {method:"POST", body:data})
-				.then(response => response.text())
-				.then(data => console.log(data));
+				.then(response => response.json())
+				.then(data => upload_status(data));
 		}, 'image/bmp');
 	}
 
