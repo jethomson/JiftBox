@@ -15,28 +15,33 @@
 		text-align: center;
 		font-family: verdana, sans-serif;
 	}
+	#flex_container {
+		display: flex;
+		flex-wrap: wrap;
+	}
 	.grid-container {
+		flex: 1;
 		display: grid;
-		grid-template-columns: repeat(13, auto);
+		grid-template-columns: repeat(5, auto);
 		grid-row-gap: 5px;
-		width: 100%;
+		/*width: 100%;*/
 		/*height: 85vh;*/
-		/*max-width: 600px;
-		max-height: 800px;*/
-  		align-items: center;
+		/*max-width: 600px;*/
+		/*max-height: 800px;*/
   		justify-content: center;
 		margin: 0 auto;
+		border-style: solid;
 	}
-	.grid-item-span {
-		padding-left: 1em;
-  		text-align: left;
+	.grid-item-bg-img {
+		grid-column: 1 / span 5;
+		text-align: center;
+		margin: auto;
 	}
 	.grid-item-msg,
 	.grid-item-button {
-		grid-column: 1 / span 13;
+		grid-column: 1;
 	}
 
-	
 	button {
 		border: 0;
 		border-radius: 0.3rem;
@@ -99,19 +104,28 @@
 	<div id="maindiv" style="visibility: hidden">
 		<h3>Assign overlays to images.</h3>
 		<form id="overlays_form" action="upload" method="POST"></form>
-		<div id="grid_container" class="grid-container">
-		  	<div id="insert_before_here" class="grid-item-button" form="overlays_form">
-				<button id="save_assignments" onclick="save_assignments()">Update Overlays</button>
-			</div>
-		  	<div id="main_button" class="grid-item-button">
-				<a href="/"><button name="">Main Menu</button></a>
-			</div>
+		<div id="flex_container">
+			<div id="insert_before_here" class="grid-item-button"></div>
+		</div>
+		<button id="save_assignments" form="overlays_form" onclick="save_assignments()">Update Overlays</button>
+		<div id="main_button" class="grid-item-button">
+			<a href="/"><button name="">Main Menu</button></a>
 		</div>
 	</div>
 
 
 	<script type="text/javascript">
 	var g_overlays = [];
+	// set defaults but allow for webserver to replace templates
+	// if you do not see the templates MY_WIDTH and MY_HEIGHT it is because
+	// they were replaced with numbers
+	let g_bg_canvas_w = 240;  // default
+	let g_bg_canvas_h = 135; // default
+	if (typeof $MY_WIDTH$ !== "undefined" && typeof $MY_HEIGHT$ !== "undefined") {
+		g_bg_canvas_w = $MY_WIDTH$;   // template substitution
+		g_bg_canvas_h = $MY_HEIGHT$; // template substitution
+	}
+	const g_overlay_canvas_wh = 33;
 	
 	base_url = '';
 	if (window.location.protocol == "file:") {
@@ -121,48 +135,97 @@
 		base_url = "http://jiftbox.local";
 	}
 	
+
+	function load_bg_images_sequential(el_imgs) {
+		if (!el_imgs.length) {
+			return;
+		}
+
+		let el_img = el_imgs.shift();
+		let url = base_url + el_img.getAttribute('data-filename');
+
+		el_img.onload = function () {
+				load_bg_images_sequential(el_imgs);
+		}
+		el_img.src = url;
+	}
+
+
+	function load_sprite(el_overlay) {
+		let overlay_name = el_overlay.value;
+		let el_img = document.getElementById( "overlay_img_" + el_overlay.getAttribute("data-index") + "_" + el_overlay.getAttribute("data-filename")  );
+		if (overlay_name.startsWith("/overlays")) {
+
+			image = new Image();
+			image.onload = function () {
+					ctx = el_img.getContext('2d');
+					ctx.drawImage(this, 0, 0, this.width, this.height, 0, 0, g_overlay_canvas_wh, g_overlay_canvas_wh);
+			}
+			image.src = base_url + overlay_name;
+		}
+	}
+
+
 	function insert_assignment_elements(responseText) {
 		var maindiv = document.getElementById("maindiv");
-		var container = document.getElementById("grid_container");
-		
+		var container = document.getElementById("flex_container");
+
 		var insert_point = document.getElementById("insert_before_here");
-		
+
 		if (responseText != "") {
-	
-			for (var onum = 0; onum < 3; onum++) {
-				var hdr0 = document.createElement("label");
-				hdr0.innerHTML = "Name"
-				var hdr1 = document.createElement("label");
-				hdr1.innerHTML = "Count"
-				var hdr2 = document.createElement("label");
-				hdr2.innerHTML = "Direction"
-				var hdr3 = document.createElement("label");
-				hdr3.innerHTML = "Wind"
-	
-				container.insertBefore(hdr0, insert_point);
-				container.insertBefore(hdr1, insert_point);
-				container.insertBefore(hdr2, insert_point);
-				container.insertBefore(hdr3, insert_point);
-	
-			}
-	
-			var hdr4 = document.createElement("label");
-			hdr4.innerHTML = "Filename"
-			container.insertBefore(hdr4, insert_point);
-	
 			var files = responseText.split('\n');
 			for (var i in files) {
 				if (files[i] != "" && !files[i].endsWith('/')) {
 					var filename = files[i];
 					filename = filename.slice(0, filename.lastIndexOf('\t'));
+
+					var overlay_div = document.createElement("div");
+					overlay_div.classList.add("grid-container");
+
+					var bg_img = document.createElement("img");
+					bg_img.classList.add("grid-item-bg-img");
+					bg_img.setAttribute("id", 'bg_img_'+filename);
+					bg_img.setAttribute("data-filename", filename);
+					bg_img.setAttribute("alt", `Loading image ${filename}. GIFs take a while to load.`);
+					bg_img.width = g_bg_canvas_w;
+					bg_img.style.width = g_bg_canvas_w + "px";
+					bg_img.height = g_bg_canvas_h;
+					bg_img.style.height = g_bg_canvas_h + "px";
+					overlay_div.appendChild(bg_img);
+
+					var label
+					label = document.createElement("label");
+					label.innerHTML = ""; // thumbnail
+					overlay_div.appendChild(label);
+					label = document.createElement("label");
+					label.innerHTML = "Name";
+					overlay_div.appendChild(label);
+					label = document.createElement("label");
+					label.innerHTML = "Count";
+					overlay_div.appendChild(label);
+					label = document.createElement("label");
+					label.innerHTML = "Direction";
+					overlay_div.appendChild(label);
+					label = document.createElement("label");
+					label.innerHTML = "Wind";
+					overlay_div.appendChild(label);
 	
 					for (var onum = 0; onum < 3; onum++) {
+						var img = document.createElement("canvas");
+						img.setAttribute("id", 'overlay_img_'+onum+'_'+filename);
+						img.width = g_overlay_canvas_wh;
+						img.style.width = g_overlay_canvas_wh + "px";
+						img.height = g_overlay_canvas_wh;
+						img.style.height = g_overlay_canvas_wh + "px";
+						overlay_div.appendChild(img);
+
 						var overlay_select = document.createElement("select");
 						overlay_select.setAttribute("id", 'overlay_select_'+onum+'_'+filename);
 						overlay_select.setAttribute("name", 'overlay_select_'+onum+'_'+filename);
 						overlay_select.setAttribute("form", "overlays_form");
 						overlay_select.setAttribute("data-filename", filename);
 						overlay_select.setAttribute("data-index", onum);
+						overlay_select.setAttribute("onchange", "load_sprite(this)");
 	
 						var option = document.createElement("option");
 						option.text = "No Overlay";
@@ -173,7 +236,10 @@
 							option.text = g_overlays[j].replace('/overlays/', '');
 							overlay_select.add(option);
 						}
-	
+
+						overlay_div.appendChild(overlay_select);
+
+
 						var overlay_cnt = document.createElement("input");
 						overlay_cnt.setAttribute("type", "number");
 						overlay_cnt.style.width = "40px";
@@ -184,6 +250,9 @@
 						overlay_cnt.setAttribute("id", 'overlay_count_'+onum+'_'+filename);
 						overlay_cnt.setAttribute("name", 'overlay_count_'+onum+'_'+filename);
 						overlay_cnt.setAttribute("form", "overlays_form");
+
+						overlay_div.appendChild(overlay_cnt);
+
 						
 						var dir_select = document.createElement("select");
 						dir_select.setAttribute("id", 'overlay_dir_'+onum+'_'+filename);
@@ -206,7 +275,9 @@
 						option.text = "backward";
 						option.value = "backward";
 						dir_select.add(option);
-	
+
+						overlay_div.appendChild(dir_select);
+
 						
 						var wind_speed = document.createElement("input");
 						wind_speed.setAttribute("type", "number");
@@ -218,19 +289,10 @@
 						wind_speed.setAttribute("id", 'overlay_wind_'+onum+'_'+filename);
 						wind_speed.setAttribute("name", 'overlay_wind_'+onum+'_'+filename);
 						wind_speed.setAttribute("form", "overlays_form");
-	
-	
-						container.insertBefore(overlay_select, insert_point);
-						container.insertBefore(overlay_cnt, insert_point);
-						container.insertBefore(dir_select, insert_point);
-						container.insertBefore(wind_speed, insert_point);
+
+						overlay_div.appendChild(wind_speed);
 					}
-	
-					var label_span = document.createElement("span");
-					label_span.classList.add("grid-item-span");
-					var label_text = filename
-					label_span.appendChild(document.createTextNode(label_text));
-					container.insertBefore(label_span, insert_point);
+					container.insertBefore(overlay_div, insert_point);
 				}
 			}
 		}
@@ -242,8 +304,11 @@
 			container.insertBefore(not_found_div, insert_point);
 			insert_point.style.visibility = "hidden"; 
 		}
+
+		maindiv.style.visibility = "visible";
 		
-		maindiv.style.visibility = "visible"; 
+		let el_imgs = document.querySelectorAll('[id^="bg_img_"]');
+		load_bg_images_sequential([ ...el_imgs]);
 	}
 	
 	function create_overlay_files_list(responseText) {
@@ -251,8 +316,11 @@
 			var files = responseText.split('\n');
 			for (var i in files) {
 				if (files[i] != "" && !files[i].endsWith('/')) {
-					var filename = files[i];
-					g_overlays.push(filename.slice(0, filename.lastIndexOf('\t')));
+					var fnfs = files[i]; // filename and filesize separated by tab character
+					var filename = fnfs.slice(0, fnfs.lastIndexOf('\t'));
+					if (filename.toLowerCase().endsWith(".bmp")) {
+						g_overlays.push(filename);
+					}
 				}
 			}
 		}
@@ -260,13 +328,14 @@
 	
 	function load_saved_assignments(responseText) {
 		let overlay_assignments = JSON.parse(responseText);
+		let el_imgs = document.querySelectorAll('[id^="overlay_img_"]');
 		let el_overlays = document.querySelectorAll('[id^="overlay_select_"]');
 		let el_counts = document.querySelectorAll('[id^="overlay_count_"]');
 		let el_directions = document.querySelectorAll('[id^="overlay_dir_"]');
 		let el_winds = document.querySelectorAll('[id^="overlay_wind_"]');
 		
-		overlays_dict = {};
 		for (let i = 0; i < el_overlays.length; i++) {
+			let el_img = el_imgs[i];
 			let el_overlay = el_overlays[i];
 			let el_count = el_counts[i];
 			let el_direction = el_directions[i];
@@ -281,6 +350,10 @@
 					// so loop through all of the options and set the overlay and attributes if the file in the json matches an existing overlay file option
 					if (el_overlay.options[j].value === overlay_assignments[filename][index]['file']) {
 						el_overlay.selectedIndex = j;
+						//if (overlay_assignments[filename][index]['file'].startsWith("/overlays")) {
+						if (overlay_assignments[filename][index]['file'].toLowerCase().endsWith(".bmp")) {
+							load_sprite(el_overlay);
+						}
 						value = overlay_assignments[filename][index]['count'];
 						if (typeof value !== 'undefined') {
 							el_count.value = parseInt(value);
@@ -299,7 +372,8 @@
 			}
 		}
 	}
-	
+
+
 	function upload_status(json) {
 		if (json["file_upload_status"] == 0) {
 			console.log('File uploaded successfully.');
@@ -374,6 +448,7 @@
 	}
 	
 	load_assignments();
+
 	
 	</script>
 </body>

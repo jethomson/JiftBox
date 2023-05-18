@@ -196,7 +196,6 @@ void load_sprites(overlay_attributes &attributes) {
       attributes.num_instances.erase(attributes.num_instances.begin() + i);
     }
   }
-  return sprite_cnt;
 }
 
 void overlay_setup(TFT_eSPI *tft) {

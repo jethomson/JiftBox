@@ -447,6 +447,12 @@ String processor(const String& var) {
   return String();
 }
 
+String subst_file_links(const String& var) {
+  if(var == "HELLO_FROM_TEMPLATE")
+    return overlay_list;
+  return String();
+}
+
 bool filterOnNotLocal(AsyncWebServerRequest *request) {
   // have to refer to service when requesting hostname from MDNS
   // but this code is not working for me.
@@ -475,6 +481,23 @@ void web_server_initiate(void) {
       request->redirect("/");
     });
 
+    web_server.on("/overlay.html", HTTP_GET, [](AsyncWebServerRequest *request) {
+      //String overlay_url = "/html/overlay.html?display_width=";
+      //overlay_url + String(width) + "&display_height=" + String(height);
+      request->send(LittleFS, "/html/overlay.html", String(), false, processor);
+    });
+
+    web_server.on("/assign_overlays.html", HTTP_GET, [](AsyncWebServerRequest *request) {
+      request->send(LittleFS, "/html/assign_overlays.html", String(), false, processor);
+    });
+
+    web_server.serveStatic("/", LittleFS, "/html/");
+
+/*
+    web_server.on("/notfound.html", HTTP_GET, [](AsyncWebServerRequest *request) {
+      request->send(LittleFS, "/html/notfound.html");
+    });
+
     web_server.on("/upload.html", HTTP_GET, [](AsyncWebServerRequest *request) {
       request->send(LittleFS, "/html/upload.html");
     });
@@ -487,50 +510,28 @@ void web_server_initiate(void) {
       request->send(LittleFS, "/html/network.html");
     });
 
-    web_server.on("/overlay.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-      //String overlay_url = "/html/overlay.html?display_width=";
-      //overlay_url + String(width) + "&display_height=" + String(height);
-      request->send(LittleFS, "/html/overlay.html", String(), false, processor);
-    });
-
     web_server.on("/assign_overlays.html", HTTP_GET, [](AsyncWebServerRequest *request) {
       request->send(LittleFS, "/html/assign_overlays.html");
     });
+*/
+
+    web_server.serveStatic("/images/", LittleFS, "/images/");
+
+    web_server.serveStatic("/overlays/", LittleFS, "/overlays/");
 
     web_server.on("/overlay_assignment.json", HTTP_GET, [](AsyncWebServerRequest *request) {
       request->send(LittleFS, "/overlay_assignment.json");
     });
 
 
-    //DEBUGGING corrupted phone overlays
-    web_server.on("/overlays/overlay2.bmp", HTTP_GET, [](AsyncWebServerRequest *request) {
-      request->send(LittleFS, "/overlays/overlay2.bmp");
-    });
-/*
-    web_server.on("/overlays/testfirefox.bmp", HTTP_GET, [](AsyncWebServerRequest *request) {
-      request->send(LittleFS, "/overlays/testfirefox.bmp");
-    });
-
-    web_server.on("/overlays/testphone.bmp", HTTP_GET, [](AsyncWebServerRequest *request) {
-      request->send(LittleFS, "/overlays/testphone.bmp");
-    });
-
-    web_server.on("/overlays/testchrome.bmp", HTTP_GET, [](AsyncWebServerRequest *request) {
-      request->send(LittleFS, "/overlays/testchrome.bmp");
-    });
-*/
-    web_server.on("/overlays/testgimp.bmp", HTTP_GET, [](AsyncWebServerRequest *request) {
-      request->send(LittleFS, "/overlays/testgimp.bmp");
-    });
-
-    web_server.on("/overlays/testgimpncs.bmp", HTTP_GET, [](AsyncWebServerRequest *request) {
-      request->send(LittleFS, "/overlays/testgimpncs.bmp");
-    });
-
-    web_server.on("/overlays/test.bmp", HTTP_GET, [](AsyncWebServerRequest *request) {
-      request->send(LittleFS, "/overlays/test.bmp");
-    });
-
+    // serve all requests to  host/overlays/* (uri) from /littlefs/overlays/ (path)
+    // serveStatic(const char* uri, fs::FS& fs, const char* path, const char* cache_control = NULL)
+    //web_server.serveStatic("/overlays/", LittleFS, "/overlays/").setDefaultFile("notfound.html");
+    //AsyncStaticWebHandler* handler = &web_server.serveStatic("/overlays/", LittleFS, "/overlays/");
+    //handler->setDefaultFile("index.html");
+    //handler->setTemplateProcessor(subst_file_links);
+    //web_server.serveStatic("/images/", LittleFS, "/images/").setDefaultFile("notfound.html");
+   
 
 
     web_server.on("/post_test", HTTP_POST, [](AsyncWebServerRequest *request) {
@@ -625,6 +626,7 @@ void web_server_initiate(void) {
     });
 
     web_server.onNotFound([](AsyncWebServerRequest *request) {
+      Serial.println("onNotFound");
       request->redirect("/");
     });
 

@@ -267,9 +267,11 @@
 			(function convert() {
 			
 				// bitmap data, change order of ABGR to BGRA (msb-order)
+				var j = 0;
 				while(y < h && block > 0) {
 					p = offset + y * stride;            // offset + stride x height
 					x = 0;
+					j = 0;
 			
 					while(x < wb) {
 						block--;
@@ -303,8 +305,8 @@
 							pix16 = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
 							//if (pix16 == 0x0000) { // black
 							//if (pix16 == 0x2966) { // #292F33
-							//if (block % 4 == 0) { // semi-transparent
-							if (pix16 <= 0x3186) { // #333333
+							if ((y % 2 == 0 && j % 2 == 0) || ((y+1) % 2 == 0 && (j+1) % 2 == 0)) { // semi-transparent
+							//if (pix16 <= 0x3186) { // #333333
 							  pix16 = 0x0120; // (0x24 & 0xFC) << 3) transparent for TFT_eSPI
 							}
 							view.setUint8(p + x, pix16);
@@ -312,6 +314,7 @@
 							view.setUint8(p + x, pix16 >>> 8);
 							x++;
 						}
+						j++
 					}
 					y++
 				}
