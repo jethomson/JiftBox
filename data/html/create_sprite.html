@@ -585,7 +585,7 @@
 	function upload() {
 		//ucanvas.toBlob((blob) => { // Chrome will not convert blob to PNG so use custom code
 		CanvasToBMP.toBlob(ucanvas, 16, (blob) => {
-			const filename = '/sprites/' + document.getElementById('filename').value + '.bmp';
+			const filename = '/images/sprites/' + document.getElementById('filename').value + '.bmp';
 			let data = new FormData();
 			data.append("upload", blob, filename);
 			fetch(base_url+'/file_upload', {method:"POST", body:data})

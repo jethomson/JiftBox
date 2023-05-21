@@ -232,7 +232,6 @@ void create_dirs(String path) {
 
 String file_list_tmp;
 String file_list;
-String sprite_list;
 // NOTE: an empty folder will not be added when building a littlefs image.
 // Empty folders will not be created when uploaded either.
 void list_files(File dir, String parent) {
@@ -279,14 +278,6 @@ void handle_file_list(void) {
       img_root.close();
     }
     file_list = file_list_tmp;
-    file_list_tmp = "";
-
-    File sprite_root = LittleFS.open("/sprites");
-    if (sprite_root) {
-      list_files(sprite_root, "/");
-      sprite_root.close();
-    }
-    sprite_list = file_list_tmp;
     file_list_tmp = "";
   }
 }
@@ -447,11 +438,6 @@ String processor(const String& var) {
   return String();
 }
 
-String subst_file_links(const String& var) {
-  if(var == "HELLO_FROM_TEMPLATE")
-    return sprite_list;
-  return String();
-}
 
 bool filterOnNotLocal(AsyncWebServerRequest *request) {
   // have to refer to service when requesting hostname from MDNS
@@ -481,10 +467,10 @@ void web_server_initiate(void) {
       request->redirect("/");
     });
 
-    web_server.on("/add_sprite.html", HTTP_GET, [](AsyncWebServerRequest *request) {
+    web_server.on("/create_sprite.html", HTTP_GET, [](AsyncWebServerRequest *request) {
       //String sprite_url = "/html/sprite.html?display_width=";
       //sprite_url + String(width) + "&display_height=" + String(height);
-      request->send(LittleFS, "/html/add_sprite.html", String(), false, processor);
+      request->send(LittleFS, "/html/create_sprite.html", String(), false, processor);
     });
 
     web_server.on("/attach_sprites.html", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -502,8 +488,6 @@ void web_server_initiate(void) {
     //web_server.serveStatic("/images/", LittleFS, "/images/").setDefaultFile("notfound.html");
 
     web_server.serveStatic("/images/", LittleFS, "/images/");
-
-    web_server.serveStatic("/sprites/", LittleFS, "/sprites/");
 
     web_server.on("/sprite_settings.json", HTTP_GET, [](AsyncWebServerRequest *request) {
       request->send(LittleFS, "/sprite_settings.json");
@@ -573,10 +557,6 @@ void web_server_initiate(void) {
 
     web_server.on("/file_list", HTTP_GET, [](AsyncWebServerRequest *request) {
       request->send(200, "text/plain", file_list);
-    });
-
-    web_server.on("/sprite_file_list", HTTP_GET, [](AsyncWebServerRequest *request) {
-      request->send(200, "text/plain", sprite_list);
     });
 
     web_server.on("/delete", HTTP_POST, [](AsyncWebServerRequest *request) {
@@ -710,12 +690,3 @@ void fm_loop(void) {
   handle_file_list();
   handle_delete_list();
 }
-
-//void setup(void) {
-//  DEBUG_BEGIN(115200);
-//  fm_setup();
-//}
-
-//void loop(void) {
-//  fm_loop();
-//}

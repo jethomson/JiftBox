@@ -119,7 +119,7 @@
 	function load_sprite(el_sprite) {
 		let sprite_name = el_sprite.value;
 		let el_img = document.getElementById( "sprite_img_" + el_sprite.getAttribute("data-index") + "_" + el_sprite.getAttribute("data-filename")  );
-		if (sprite_name.startsWith("/sprites")) {
+		if (sprite_name.startsWith("/images/sprites")) {
 
 			image = new Image();
 			image.onload = function () {
@@ -140,7 +140,8 @@
 		if (responseText != "") {
 			var files = responseText.split('\n');
 			for (var i in files) {
-				if (files[i] != "" && !files[i].endsWith('/')) {
+			  // only want background image filenames
+				if (files[i] != "" && !files[i].startsWith('/images/sprites/') && !files[i].endsWith('/')) {
 					var filename = files[i];
 					filename = filename.slice(0, filename.lastIndexOf('\t'));
 
@@ -198,7 +199,7 @@
 						for (let j = 0; j < g_sprites.length; j++) {
 							var option = document.createElement("option");
 							option.value = g_sprites[j]; 
-							option.text = g_sprites[j].replace('/sprites/', '');
+							option.text = g_sprites[j].replace('/images/sprites/', '');
 							sprite_select.add(option);
 						}
 
@@ -283,7 +284,8 @@
 		if (responseText != "") {
 			var files = responseText.split('\n');
 			for (var i in files) {
-				if (files[i] != "" && !files[i].endsWith('/')) {
+			  // only want sprite filenames
+				if (files[i] != "" && files[i].startsWith('/images/sprites/') && !files[i].endsWith('/')) {
 					var fnfs = files[i]; // filename and filesize separated by tab character
 					var filename = fnfs.slice(0, fnfs.lastIndexOf('\t'));
 					if (filename.toLowerCase().endsWith(".bmp")) {
@@ -294,8 +296,7 @@
 		}
 	}
 	
-	function load_sprite_settings(responseText) {
-		let sprite_settings = JSON.parse(responseText);
+	function load_sprite_settings(sprite_settings) {
 		let el_imgs = document.querySelectorAll('[id^="sprite_img_"]');
 		let el_sprites = document.querySelectorAll('[id^="sprite_select_"]');
 		let el_counts = document.querySelectorAll('[id^="sprite_count_"]');
@@ -394,31 +395,17 @@
 	
 	
 	async function load_page() {
-		/*
 		const [data1, data2] = await Promise.all([
-			fetch(base_url+'/sprite_file_list'),
 			fetch(base_url+'/file_list'),
-		])
-			.then(async (response) => {
-				return Promise.all(
-					response.map(async (data) => await data.text())
-				)
-		});
-		*/
-	
-		const [data1, data2] = await Promise.all([
-			fetch(base_url+'/sprite_file_list'),
-			fetch(base_url+'/file_list'),
+		  fetch(base_url+'/sprite_settings.json')
 		]);		
 	
-		const rt1 = await data1.text();
-		const rt2 = await data2.text();
-		create_sprite_files_list(rt1);
-		create_sprite_settings_ui(rt2);
-	
-		fetch(base_url+'/sprite_settings.json')
-			.then(response => response.text())
-			.then(data => load_sprite_settings(data));		
+		const file_list = await data1.text();
+		create_sprite_files_list(file_list);
+		create_sprite_settings_ui(file_list);
+		
+		const sprite_settings = await data2.json();
+    load_sprite_settings(sprite_settings);
 	}
 	
 	load_page();
