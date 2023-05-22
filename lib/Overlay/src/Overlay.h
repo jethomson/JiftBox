@@ -5,9 +5,10 @@
 #include <SPI.h>
 #include <TFT_eSPI.h>
 
-#define MAX_OVERLAY_FILES_OPEN 4
+#define MAX_SPRITE_FILES_OPEN 4
 
-#define OVERLAY_Y_SPEED 2
+#define OVERLAY_DIRECTIONAL_SPEED 2
+
 
 void overlay_setup(TFT_eSPI *tft);
 void handle_overlay(std::string imgname, TFT_eSprite* background);
