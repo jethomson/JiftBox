@@ -17,7 +17,8 @@ struct SpriteSettings {
   vector<string> filenames;
   vector<int> num_instances;
   vector<string> directions;
-  vector<int> winds;
+  vector<int> speeds;
+  vector<string> winds;
 };
 
 
@@ -213,8 +214,8 @@ void load_sprites(SpriteSettings &sprite_settings) {
       sprite_settings.filenames.erase(sprite_settings.filenames.begin() + i);
       sprite_settings.num_instances.erase(sprite_settings.num_instances.begin() + i);
       sprite_settings.directions.erase(sprite_settings.directions.begin() + i);
+      sprite_settings.speeds.erase(sprite_settings.speeds.begin() + i);
       sprite_settings.winds.erase(sprite_settings.winds.begin() + i);
-
     }
   }
 }
@@ -307,7 +308,6 @@ void handle_overlay(std::string bgimgname, TFT_eSprite* background) {
   if (show_overlays) {
     static int wind_cnt = 0;
     static int wind = 0;
-    static int y_dir = 1;
   
     static SpriteSettings sprite_settings;
   
@@ -320,8 +320,11 @@ void handle_overlay(std::string bgimgname, TFT_eSprite* background) {
       sprite_settings.filenames.clear();
       sprite_settings.num_instances.clear();
       sprite_settings.directions.clear();
+      sprite_settings.speeds.clear();
       sprite_settings.winds.clear();
       overlays.clear();
+
+      wind_cnt = 0;
 
       // the primary key for sprite_settings_JSON is the filename of the background image
       // settings_substring contains the filename of the sprite and the sprite's settings for a particular background image filename
@@ -339,6 +342,8 @@ void handle_overlay(std::string bgimgname, TFT_eSprite* background) {
           while((pos = simple_JSON_parse(settings_substring, "count", pos, sprite_settings.num_instances)) != string::npos);
           pos = 0;
           while((pos = simple_JSON_parse(settings_substring, "direction", pos, sprite_settings.directions)) != string::npos);
+          pos = 0;
+          while((pos = simple_JSON_parse(settings_substring, "speed", pos, sprite_settings.speeds)) != string::npos);
           pos = 0;
           while((pos = simple_JSON_parse(settings_substring, "wind", pos, sprite_settings.winds)) != string::npos);
           pos = 0;
@@ -391,19 +396,38 @@ void handle_overlay(std::string bgimgname, TFT_eSprite* background) {
 
           if (sprite_settings.directions[si] == "fall") {
             overlays[ri[i]].x = random(xlb, xub);
-            overlays[ri[i]].y = random(-_tft->height(), -9);
+            if (sprite_settings.speeds[si] > 0) {
+              overlays[ri[i]].y = random(-_tft->height(), -9);
+            }
+            else {
+              overlays[ri[i]].y = random(0, _tft->height());
+            }
           }
           else if (sprite_settings.directions[si] == "rise") {
             overlays[ri[i]].x = random(xlb, xub);
-            overlays[ri[i]].y = random(_tft->height()+9, 2*_tft->height());
+            if (sprite_settings.speeds[si] > 0) {
+              overlays[ri[i]].y = random(_tft->height()+9, 2*_tft->height());
+            }
+            else {
+              overlays[ri[i]].y = random(0, _tft->height());
+            }
           }
           else if (sprite_settings.directions[si] == "forward") {
-            overlays[ri[i]].x = random(-_tft->width(), -9);
+            if (sprite_settings.speeds[si] > 0) {
+              overlays[ri[i]].x = random(-_tft->width(), -9);
+            }
+            else {
+              overlays[ri[i]].x = random(0, _tft->width());
+            }
             overlays[ri[i]].y = random(ylb, yub);
-            Serial.println(overlays[ri[i]].y);
           }
           else if (sprite_settings.directions[si] == "backward") {
-            overlays[ri[i]].x = random(_tft->width()+9, 2*_tft->width());
+            if (sprite_settings.speeds[si] > 0) {
+              overlays[ri[i]].x = random(_tft->width()+9, 2*_tft->width());
+            }
+            else {
+              overlays[ri[i]].x = random(0, _tft->width());
+            }
             overlays[ri[i]].y = random(ylb, yub);
           }
           i++;
@@ -422,18 +446,20 @@ void handle_overlay(std::string bgimgname, TFT_eSprite* background) {
   
        //TODO: add speed for direction. rename wind to crosswind. add a jitter checkbox. add option to preserve positions across multiple background images.
        // change wind to descriptions instead of numbers and randomly change the winds direction
+       // give jitter both x and y components
       int jitter = random(-2, 3);
       //int jitter = 0;
-      int wind = sprite_settings.winds[si];
+      int speed = sprite_settings.speeds[si];
+
       int dx = 0;
       int dy = 0;
       if (sprite_settings.directions[si] == "fall") {
-        //overlays[i].x = overlays[i].x + jitter + wind;
+        //overlays[i].x = overlays[i].x + jitter + speed;
         dx = jitter + wind;
-        dy = OVERLAY_DIRECTIONAL_SPEED;
+        dy = speed;
         overlays[i].x = overlays[i].x + dx;
         overlays[i].y = overlays[i].y + dy;
-        if (wind == 0) {
+        if (sprite_settings.winds[si] == "calm") {
           if (overlays[i].x < 0) {
             overlays[i].x = 0;
           }
@@ -444,10 +470,10 @@ void handle_overlay(std::string bgimgname, TFT_eSprite* background) {
       }
       else if (sprite_settings.directions[si] == "rise") {
         dx = jitter + wind;
-        dy = -1*OVERLAY_DIRECTIONAL_SPEED;
+        dy = -1*speed;
         overlays[i].x = overlays[i].x + dx;
         overlays[i].y = overlays[i].y + dy;
-        if (wind == 0) {
+        if (sprite_settings.winds[si] == "calm") {
           if (overlays[i].x < 0) {
             overlays[i].x = 0;
           }
@@ -457,12 +483,12 @@ void handle_overlay(std::string bgimgname, TFT_eSprite* background) {
         }
       }
       else if (sprite_settings.directions[si] == "forward") {
-        dx = OVERLAY_DIRECTIONAL_SPEED;
-        dy = jitter - wind; // use minus sign so that negative wind pushes down and positive wind lifts up
+        dx = speed;
+        dy = jitter + wind;
         overlays[i].x = overlays[i].x + dx;
         overlays[i].y = overlays[i].y + dy;
 
-        if (wind == 0) {
+        if (sprite_settings.winds[si] == "calm") {
           if (overlays[i].y < 0) {
             overlays[i].y = 0;
           }
@@ -472,11 +498,11 @@ void handle_overlay(std::string bgimgname, TFT_eSprite* background) {
         }
       }
       if (sprite_settings.directions[si] == "backward") {
-        dx = -1*OVERLAY_DIRECTIONAL_SPEED;
-        dy = jitter - wind;
+        dx = -1*speed;
+        dy = jitter + wind;
         overlays[i].x = overlays[i].x + dx;
         overlays[i].y = overlays[i].y + dy;
-        if (wind == 0) {
+        if (sprite_settings.winds[si] == "calm") {
           if (overlays[i].y < 0) {
             overlays[i].y = 0;
           }
@@ -509,18 +535,19 @@ void handle_overlay(std::string bgimgname, TFT_eSprite* background) {
           overlays[i].y = random(-ff-sprite.height(), -sprite.height());
         }
       }
+
+      if (wind_cnt == 0 && sprite_settings.winds[si] == "breezy") {
+        wind = random(-5, 6);
+      }
+      else if (wind_cnt == 0 && sprite_settings.winds[si] == "stormy") {
+        wind = random(-10, 11);
+      }
     }
-    
-    /*
+
     wind_cnt++;
     if (wind_cnt > 50) {
       wind_cnt = 0;
-      wind = random(-10, 11);
-      //if (random(0, 2)) {
-      //  y_dir = -1*y_dir;
-      //}
     }
-    */
   }
 }
 

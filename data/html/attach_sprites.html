@@ -22,7 +22,7 @@
 	.grid-container {
 		flex: 1;
 		display: grid;
-		grid-template-columns: repeat(5, auto);
+		grid-template-columns: repeat(6, auto);
 		grid-row-gap: 5px;
 		/*width: 100%;*/
 		/*height: 85vh;*/
@@ -33,7 +33,7 @@
 		border-style: solid;
 	}
 	.grid-item-bg-img {
-		grid-column: 1 / span 5;
+		grid-column: 1 / span 6;
 		text-align: center;
 		margin: auto;
 	}
@@ -173,7 +173,10 @@
 					label.innerHTML = "Direction";
 					sprite_div.appendChild(label);
 					label = document.createElement("label");
-					label.innerHTML = "Wind";
+					label.innerHTML = "Speed";
+					sprite_div.appendChild(label);
+					label = document.createElement("label");
+					label.innerHTML = "Crosswind";
 					sprite_div.appendChild(label);
 	
 					for (var onum = 0; onum < 3; onum++) {
@@ -247,19 +250,41 @@
 						sprite_div.appendChild(dir_select);
 
 						
-						var wind_speed = document.createElement("input");
-						wind_speed.setAttribute("type", "number");
-						wind_speed.style.width = "40px";
-						wind_speed.setAttribute("quantity", 1);
-						wind_speed.setAttribute("min", -11);
-						wind_speed.setAttribute("max", 11);
-						wind_speed.setAttribute("value", 0);
-						wind_speed.setAttribute("id", 'sprite_wind_'+onum+'_'+filename);
-						wind_speed.setAttribute("name", 'sprite_wind_'+onum+'_'+filename);
-						wind_speed.setAttribute("form", "sprites_form");
-						wind_speed.setAttribute("onchange", "reset_upload_status()");
+						var speed = document.createElement("input");
+						speed.setAttribute("type", "number");
+						speed.style.width = "40px";
+						speed.setAttribute("quantity", 1);
+						speed.setAttribute("min", 0);
+						speed.setAttribute("max", 11);
+						speed.setAttribute("value", 0);
+						speed.setAttribute("id", 'sprite_speed_'+onum+'_'+filename);
+						speed.setAttribute("name", 'sprite_speed_'+onum+'_'+filename);
+						speed.setAttribute("form", "sprites_form");
+						speed.setAttribute("onchange", "reset_upload_status()");
 
-						sprite_div.appendChild(wind_speed);
+						sprite_div.appendChild(speed);
+
+
+						var wind_select = document.createElement("select");
+						wind_select.setAttribute("id", 'sprite_wind_'+onum+'_'+filename);
+						wind_select.setAttribute("name", 'sprite_wind_'+onum+'_'+filename);
+						wind_select.setAttribute("form", "sprites_form");
+						wind_select.setAttribute("onchange", "reset_upload_status()");
+						
+						var option = document.createElement("option");
+						option.text = "calm";
+						option.value = "calm";
+						wind_select.add(option);
+						var option = document.createElement("option");
+						option.text = "breezy";
+						option.value = "breezy";
+						wind_select.add(option);
+						var option = document.createElement("option");
+						option.text = "stormy";
+						option.value = "stormy";
+						wind_select.add(option);
+
+						sprite_div.appendChild(wind_select);
 					}
 					container.insertBefore(sprite_div, insert_point);
 				}
@@ -297,10 +322,12 @@
 	}
 	
 	function load_sprite_settings(sprite_settings) {
+    console.log(sprite_settings);
 		let el_imgs = document.querySelectorAll('[id^="sprite_img_"]');
 		let el_sprites = document.querySelectorAll('[id^="sprite_select_"]');
 		let el_counts = document.querySelectorAll('[id^="sprite_count_"]');
 		let el_directions = document.querySelectorAll('[id^="sprite_dir_"]');
+		let el_speeds = document.querySelectorAll('[id^="sprite_speed_"]');
 		let el_winds = document.querySelectorAll('[id^="sprite_wind_"]');
 		
 		for (let i = 0; i < el_sprites.length; i++) {
@@ -308,6 +335,7 @@
 			let el_sprite = el_sprites[i];
 			let el_count = el_counts[i];
 			let el_direction = el_directions[i];
+			let el_speed = el_speeds[i];
 			let el_wind = el_winds[i];
 			
 			let filename = el_sprite.getAttribute('data-filename');
@@ -331,9 +359,13 @@
 						if (typeof value !== 'undefined') {
 							el_direction.value = value;
 						}
-						value = parseInt(sprite_settings[filename][index]['wind']);
+						value = parseInt(sprite_settings[filename][index]['speed']);
 						if (typeof value !== 'undefined') {
-							el_wind.value = parseInt(value);
+							el_speed.value = parseInt(value);
+						}
+						value = sprite_settings[filename][index]['wind'];
+						if (typeof value !== 'undefined') {
+							el_wind.value = value;
 						}
 						break;
 					}
@@ -362,6 +394,7 @@
 		let el_sprites = document.querySelectorAll('[id^="sprite_select_"]');
 		let el_counts = document.querySelectorAll('[id^="sprite_count_"]');
 		let el_directions = document.querySelectorAll('[id^="sprite_dir_"]');
+		let el_speeds = document.querySelectorAll('[id^="sprite_speed_"]');
 		let el_winds = document.querySelectorAll('[id^="sprite_wind_"]');
 		
 		sprites_dict = {};
@@ -369,17 +402,19 @@
 			let el_sprite = el_sprites[i];
 			let el_count = el_counts[i];
 			let el_direction = el_directions[i];
+			let el_speed = el_speeds[i];
 			let el_wind = el_winds[i];
 	
 			let filename = el_sprite.getAttribute('data-filename');
 			let count = el_count.value; // do not use parseInt() because keeping everything as a string makes it easier to parse the JSON file
 			let sprite_fname = el_sprite.options[el_sprite.selectedIndex].value;
 			let direction = el_direction.options[el_direction.selectedIndex].value;
-			let wind = el_wind.value;
+			let speed = el_speed.value;
+			let wind = el_wind.options[el_wind.selectedIndex].value;
 			if (!(filename in sprites_dict)) {
 				sprites_dict[filename] = [];
 			}
-			sprites_dict[filename].push({"file": sprite_fname, 'count': count, 'direction': direction, 'wind': wind});
+			sprites_dict[filename].push({"file": sprite_fname, 'count': count, 'direction': direction, 'speed': speed, 'wind': wind});
 		}
 	
 		console.log(JSON.stringify(sprites_dict));
@@ -405,6 +440,9 @@
 		create_sprite_settings_ui(file_list);
 		
 		const sprite_settings = await data2.json();
+		//let sprite_settings = await data2.text();
+		//console.log(sprite_settings);
+		//sprite_settings = JSON.parse(sprite_settings);
     load_sprite_settings(sprite_settings);
 	}
 	
