@@ -66,15 +66,16 @@ void load_sprites(SpriteSettings &sprite_settings) {
   sprites.clear();
 
   uint8_t sprite_cnt = 0;
-  int8_t erase[sprite_settings.filenames.size()] = {-1};
+  int8_t erase[sprite_settings.filenames.size()];
 
   for (uint8_t i = 0; i < sprite_settings.filenames.size(); i++) {
+    erase[i] = -1;
     if(!LittleFS.exists(sprite_settings.filenames[i].c_str())) {
       erase[i] = i; // invalid filename or not found so mark for removal from vector
       continue;
     }
 
-    Serial.println(sprite_settings.filenames[i].c_str());
+    //Serial.println(sprite_settings.filenames[i].c_str());
     File entry = LittleFS.open(sprite_settings.filenames[i].c_str());
     if (!entry.isDirectory() && sprite_cnt < MAX_SPRITE_FILES_OPEN) {
       uint16_t *data;
@@ -107,14 +108,14 @@ void load_sprites(SpriteSettings &sprite_settings) {
         }
 
 
-        Serial.print("planes: ");
-        Serial.println(planes);
+        //Serial.print("planes: ");
+        //Serial.println(planes);
 
-        Serial.print("bpp: ");
-        Serial.println(bpp);
+        //Serial.print("bpp: ");
+        //Serial.println(bpp);
 
-        Serial.print("comp: ");
-        Serial.println(comp);
+        //Serial.print("comp: ");
+        //Serial.println(comp);
 
         // why does this function crash if a sprite isn't loaded
 
@@ -131,8 +132,8 @@ void load_sprites(SpriteSettings &sprite_settings) {
           }
 
 
-          Serial.print("upside_down: ");
-          Serial.println(upside_down);
+          //Serial.print("upside_down: ");
+          //Serial.println(upside_down);
 
 
           uint8_t bytespp = bpp/8;
@@ -209,7 +210,7 @@ void load_sprites(SpriteSettings &sprite_settings) {
     entry.close();
   }
   // erase bad entries from vectors. go from back to front so indexes stay valid.
-  for (uint8_t i = sprite_settings.filenames.size()-1; i > 0; i--) {
+  for (int8_t i = sprite_settings.filenames.size()-1; i >= 0; i--) {
     if (erase[i] != -1) {
       sprite_settings.filenames.erase(sprite_settings.filenames.begin() + i);
       sprite_settings.num_instances.erase(sprite_settings.num_instances.begin() + i);
