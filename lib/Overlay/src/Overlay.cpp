@@ -357,10 +357,7 @@ void handle_overlay(std::string bgimgname, TFT_eSprite* background) {
       else {
         return;
       }
-  
       load_sprites(sprite_settings );
-  
-      Serial.println(esp_get_free_heap_size());
   
       uint16_t total_num_overlays = 0;
       for (uint8_t si = 0; si < sprites.size(); si++) {
@@ -443,7 +440,33 @@ void handle_overlay(std::string bgimgname, TFT_eSprite* background) {
       //TFT_TRANSPARENT 0x0120 // This is actually a dark green
       //0x0120 == RGB: 0, 36, 0 == #002400
       sprite.pushToSprite(background, overlays[i].x, overlays[i].y, TFT_TRANSPARENT);
-  
+
+      int clone_x = overlays[i].x;
+      int clone_y = overlays[i].y;
+      if (overlays[i].x < 0) {
+        clone_x = overlays[i].x + _tft->width();
+      }
+      else if (overlays[i].x + sprite.width() > _tft->width()) {
+        clone_x = overlays[i].x - _tft->width();
+      }
+
+      if (overlays[i].y < 0) {
+        clone_y = overlays[i].y + _tft->width();
+      }
+      else if (overlays[i].y + sprite.height() > _tft->height()) {
+        clone_y = overlays[i].y - _tft->height();
+      }
+
+      if (clone_x != overlays[i].x || clone_y != overlays[i].y) {
+        sprite.pushToSprite(background, clone_x, clone_y, TFT_TRANSPARENT);
+        if (0 <= clone_x && clone_x + sprite.width() <= _tft->width() && 0 <= clone_y && clone_y + sprite.height() <= _tft->height()) {
+          overlays[i].x = clone_x;
+          overlays[i].y = clone_y;
+        }
+      }
+
+          
+
   
        //TODO: add speed for direction. rename wind to crosswind. add a jitter checkbox. add option to preserve positions across multiple background images.
        // change wind to descriptions instead of numbers and randomly change the winds direction
@@ -513,8 +536,9 @@ void handle_overlay(std::string bgimgname, TFT_eSprite* background) {
         }
       }
 
+/*
       // use 20 as a fudge factor so character is off the screen before we reset its location
-      uint8_t ff = 20;
+      //uint8_t ff = 20;
       if (overlays[i].x + sprite.width() < -ff) {
         if (dx < 0) {
           overlays[i].x = _tft->width();
@@ -543,6 +567,7 @@ void handle_overlay(std::string bgimgname, TFT_eSprite* background) {
       else if (wind_cnt == 0 && sprite_settings.winds[si] == "stormy") {
         wind = random(-10, 11);
       }
+*/
     }
 
     wind_cnt++;
