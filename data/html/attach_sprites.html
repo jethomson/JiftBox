@@ -120,13 +120,16 @@
 		let sprite_name = el_sprite.value;
 		let el_img = document.getElementById( "sprite_img_" + el_sprite.getAttribute("data-index") + "_" + el_sprite.getAttribute("data-filename")  );
 		if (sprite_name.startsWith("/images/sprites")) {
-
 			image = new Image();
 			image.onload = function () {
 					ctx = el_img.getContext('2d');
 					ctx.drawImage(this, 0, 0, this.width, this.height, 0, 0, g_sprite_canvas_wh, g_sprite_canvas_wh);
 			}
 			image.src = base_url + sprite_name;
+		}
+		else {
+  		ctx = el_img.getContext('2d');
+			ctx.clearRect(0, 0, g_sprite_canvas_wh, g_sprite_canvas_wh);
 		}
 	}
 
