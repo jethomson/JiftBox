@@ -15,10 +15,13 @@ string sprite_settings_JSON;
 
 struct SpriteSettings {
   vector<string> filenames;
-  vector<int> num_instances;
-  vector<string> directions;
-  vector<int> speeds;
-  vector<string> winds;
+  vector<int8_t> num_instances;
+  vector<int8_t> directions;
+  vector<int8_t> speeds;
+  vector<int8_t> jiggles;
+  vector<int8_t> wind_cats;
+  vector<int8_t> wind_speeds;
+  vector<int8_t> edge_effects;
 };
 
 
@@ -30,8 +33,11 @@ struct Overlay {
   uint8_t si = 0; // this is an index into the sprites vector
   int x = 0;
   int y = 0;
+  int8_t x_dir = 0;
+  int8_t y_dir = 0;
+  int8_t speed = 0;
+  bool was_inbounds = false;
 };
-
 
 
 uint16_t read16(fs::File &f);
@@ -40,8 +46,7 @@ void load_sprites(SpriteSettings &sprite_settings);
 void overlay_setup(TFT_eSPI *tft);
 TFT_eSprite& get_sprite(uint8_t si);
 //size_t simple_JSON_parse(string s, string key, size_t start_pos, vector<string> &output);
-//template<class T> size_t simple_JSON_parse(string s, string key, size_t start_pos, vector<T> &output);
-template<class T> size_t simple_JSON_parse(string s, string key, size_t start_pos, vector<T> &output, uint8_t output_type);
+//template<class T> size_t simple_JSON_parse(string s, string key, size_t start_pos, vector<T> &output, uint8_t output_type);
 void handle_overlay(std::string bgimgname, TFT_eSprite* background);
 
 
@@ -70,8 +75,9 @@ void load_sprites(SpriteSettings &sprite_settings) {
 
   for (uint8_t i = 0; i < sprite_settings.filenames.size(); i++) {
     erase[i] = -1;
-    if(!LittleFS.exists(sprite_settings.filenames[i].c_str())) {
-      erase[i] = i; // invalid filename or not found so mark for removal from vector
+    if(!LittleFS.exists(sprite_settings.filenames[i].c_str()) || sprite_settings.num_instances[i] < 1) {
+      // exists will output an error message like: [ 26496][E][vfs_api.cpp:29] open(): No sprite does not start with /
+      erase[i] = i; // invalid filename, not found, or 0 instances so mark for removal from vector
       continue;
     }
 
@@ -216,7 +222,10 @@ void load_sprites(SpriteSettings &sprite_settings) {
       sprite_settings.num_instances.erase(sprite_settings.num_instances.begin() + i);
       sprite_settings.directions.erase(sprite_settings.directions.begin() + i);
       sprite_settings.speeds.erase(sprite_settings.speeds.begin() + i);
-      sprite_settings.winds.erase(sprite_settings.winds.begin() + i);
+      sprite_settings.jiggles.erase(sprite_settings.jiggles.begin() + i);
+      sprite_settings.wind_cats.erase(sprite_settings.wind_cats.begin() + i);
+      //sprite_settings.wind_speeds.erase(sprite_settings.wind_speeds.begin() + i); // nothing in this vector yet, so no need to deleter No Overlay entries
+      sprite_settings.edge_effects.erase(sprite_settings.edge_effects.begin() + i);
     }
   }
 }
@@ -235,6 +244,7 @@ void overlay_setup(TFT_eSPI *tft) {
   else {
     Serial.println("Failed to open config file");
   }
+  //show_overlays = false;
 }
 
 
@@ -270,7 +280,7 @@ template<class T> size_t simple_JSON_parse(string s, string key, size_t start_po
 }
 */
 
-size_t simple_JSON_parse(string s, string key, size_t start_pos, vector<int> &output) {
+size_t simple_JSON_parse(string s, string key, size_t start_pos, vector<int8_t> &output) {
   size_t end_pos = string::npos;
 
   size_t match_start = 0;
@@ -308,12 +318,12 @@ size_t simple_JSON_parse(string s, string key, size_t start_pos, vector<string> 
 void handle_overlay(std::string bgimgname, TFT_eSprite* background) {
   if (show_overlays) {
     static int wind_cnt = 0;
-    static int wind = 0;
-  
+    static int wind = 0; // TODO set up wind that affects all sprites across all background images
+
     static SpriteSettings sprite_settings;
   
     static string prev_bgimgname;
-    static vector<Overlay> overlays;  
+    static vector<Overlay> overlays;
   
     if(prev_bgimgname != bgimgname) {
     // this section only runs when the next image is loaded
@@ -322,10 +332,11 @@ void handle_overlay(std::string bgimgname, TFT_eSprite* background) {
       sprite_settings.num_instances.clear();
       sprite_settings.directions.clear();
       sprite_settings.speeds.clear();
-      sprite_settings.winds.clear();
+      sprite_settings.jiggles.clear();
+      sprite_settings.wind_cats.clear();
+      sprite_settings.wind_speeds.clear();
+      sprite_settings.edge_effects.clear();
       overlays.clear();
-
-      wind_cnt = 0;
 
       // the primary key for sprite_settings_JSON is the filename of the background image
       // settings_substring contains the filename of the sprite and the sprite's settings for a particular background image filename
@@ -346,7 +357,11 @@ void handle_overlay(std::string bgimgname, TFT_eSprite* background) {
           pos = 0;
           while((pos = simple_JSON_parse(settings_substring, "speed", pos, sprite_settings.speeds)) != string::npos);
           pos = 0;
-          while((pos = simple_JSON_parse(settings_substring, "wind", pos, sprite_settings.winds)) != string::npos);
+          while((pos = simple_JSON_parse(settings_substring, "jiggle", pos, sprite_settings.jiggles)) != string::npos);
+          pos = 0;
+          while((pos = simple_JSON_parse(settings_substring, "wind", pos, sprite_settings.wind_cats)) != string::npos);
+          pos = 0;
+          while((pos = simple_JSON_parse(settings_substring, "edge_effect", pos, sprite_settings.edge_effects)) != string::npos);
           pos = 0;
         }
         else {
@@ -357,8 +372,9 @@ void handle_overlay(std::string bgimgname, TFT_eSprite* background) {
       else {
         return;
       }
-      load_sprites(sprite_settings );
-  
+
+      load_sprites(sprite_settings);
+
       uint16_t total_num_overlays = 0;
       for (uint8_t si = 0; si < sprites.size(); si++) {
         total_num_overlays += sprite_settings.num_instances[si];
@@ -373,7 +389,10 @@ void handle_overlay(std::string bgimgname, TFT_eSprite* background) {
         ri[i] = i;
       }
       random_shuffle(&ri[0], &ri[overlays.size()-1]);
-      
+
+      wind_cnt = 0;
+      sprite_settings.wind_speeds.reserve(sprites.size());
+
       // set initial positions of overlays
       // i: spans the entire overlay vector
       //si: spans the number of sprite files loaded. this will always be less than or equal to MAX_SPRITE_FILES_OPEN.
@@ -381,52 +400,135 @@ void handle_overlay(std::string bgimgname, TFT_eSprite* background) {
       // j: spans the number of instances of a particular sprite with position of each instance tracked by the overlays vector
       uint16_t i = 0;
       for (uint8_t si = 0; si < sprites.size(); si++) {
+        if (sprite_settings.wind_cats[si] == 1) {
+          sprite_settings.wind_speeds[si] = random(-5, 6);
+        }
+        else if (sprite_settings.wind_cats[si] == 2) {
+          sprite_settings.wind_speeds[si] = random(-10, 11);
+        }
+        else {
+          sprite_settings.wind_speeds[si] = 0;
+        }
+        int8_t direction = -99;
+        int8_t speed = -99;
+
+        TFT_eSprite &sprite = get_sprite(si); 
         uint8_t cnt = sprite_settings.num_instances[si];
+
+        int divx = (_tft->width()-sprite.width())/cnt;
+        int divy = (_tft->height()-sprite.height())/cnt;
         for (uint8_t j = 0; j < cnt; j++) {
-          int xlb = j*_tft->width()/cnt;
-          int xub = (j+1)*_tft->width()/cnt;
-          int ylb = j*_tft->height()/cnt;
-          int yub = (j+1)*_tft->height()/cnt;
+          int xlb = j*divx;
+          int xub = (j+1)*divx;
+          int ylb = j*divy;
+          int yub = (j+1)*divy;
  
           // giving sprites random indices within the overlays vector will result in a random z height
           // so that all instances of one type of sprite will not always be covered by all instances of another type of sprite.
           overlays[ri[i]].si = si;
 
-          if (sprite_settings.directions[si] == "fall") {
+          if (sprite_settings.directions[si] == -2) {
+            direction = random(1, 9);
+          }
+          else if (sprite_settings.directions[si] == -1) {
+            // if direction has not been set yet pick a random one for the group
+            // otherwise the direction picked for the first overlay in this group will be reused
+            if (direction == -99) {
+              direction = random(1, 9);
+            }
+          }
+          else {
+            direction = sprite_settings.directions[si];
+          }
+          switch(direction) {
+            case 0: // no direction
+              overlays[ri[i]].x_dir = 0;
+              overlays[ri[i]].y_dir = 0;
+              break;
+            case 1: // up
+              overlays[ri[i]].x_dir = 0;
+              overlays[ri[i]].y_dir = -1;
+              break;
+            case 2: // up-right
+              overlays[ri[i]].x_dir = 1;
+              overlays[ri[i]].y_dir = -1;
+              ylb = ylb - divy;
+              yub = yub - divy;
+              break;
+            case 3: // right
+              overlays[ri[i]].x_dir = 1;
+              overlays[ri[i]].y_dir = 0;
+              break;
+            case 4: // down-right
+              overlays[ri[i]].x_dir = 1;
+              overlays[ri[i]].y_dir = 1;
+              ylb = ylb - divy;
+              yub = yub - divy;
+              break;
+            case 5: // down
+              overlays[ri[i]].x_dir = 0;
+              overlays[ri[i]].y_dir = 1;
+              break;
+            case 6: // down-left
+              overlays[ri[i]].x_dir = -1;
+              overlays[ri[i]].y_dir = 1;
+              ylb = ylb + divy;
+              yub = yub + divy;
+              break;
+            case 7: // left
+              overlays[ri[i]].x_dir = -1;
+              overlays[ri[i]].y_dir = 0;
+              break;
+            case 8: // up-left
+              overlays[ri[i]].x_dir = -1;
+              overlays[ri[i]].y_dir = -1;
+              ylb = ylb + divy;
+              yub = yub + divy;
+              break;
+            default:
+              overlays[ri[i]].x_dir = 0;
+              overlays[ri[i]].y_dir = 0;
+              break;
+          }
+
+          if (sprite_settings.speeds[si] == -2) {
+            speed = random(1, 12);
+          }
+          else if (sprite_settings.speeds[si] == -1) {
+            // if direction has not been set yet pick a random one for the group
+            // otherwise the direction picked for the first overlay in this group will be reused
+            if (speed == -99) {
+              speed = random(1, 12);
+            }
+          }
+          else {
+            speed = sprite_settings.speeds[si];
+          }
+          overlays[ri[i]].speed = speed;
+
+          if (overlays[ri[i]].y_dir != 0) {
             overlays[ri[i]].x = random(xlb, xub);
-            if (sprite_settings.speeds[si] > 0) {
-              overlays[ri[i]].y = random(-_tft->height(), -9);
+            if (overlays[ri[i]].speed > 0) {
+              overlays[ri[i]].y = -(overlays[ri[i]].y_dir - 1)*_tft->height() - random(0, _tft->height());
             }
             else {
               overlays[ri[i]].y = random(0, _tft->height());
             }
+            //overlays[ri[i]].x = 170; // wrap corner case debug
+            //overlays[ri[i]].y = 0;
           }
-          else if (sprite_settings.directions[si] == "rise") {
-            overlays[ri[i]].x = random(xlb, xub);
-            if (sprite_settings.speeds[si] > 0) {
-              overlays[ri[i]].y = random(_tft->height()+9, 2*_tft->height());
-            }
-            else {
-              overlays[ri[i]].y = random(0, _tft->height());
-            }
-          }
-          else if (sprite_settings.directions[si] == "forward") {
-            if (sprite_settings.speeds[si] > 0) {
-              overlays[ri[i]].x = random(-_tft->width(), -9);
+          else if (overlays[ri[i]].x_dir != 0) {
+            if (overlays[ri[i]].speed > 0) {
+              overlays[ri[i]].x = -(overlays[ri[i]].x_dir - 1)*_tft->width() - random(0, _tft->width());
             }
             else {
               overlays[ri[i]].x = random(0, _tft->width());
             }
             overlays[ri[i]].y = random(ylb, yub);
           }
-          else if (sprite_settings.directions[si] == "backward") {
-            if (sprite_settings.speeds[si] > 0) {
-              overlays[ri[i]].x = random(_tft->width()+9, 2*_tft->width());
-            }
-            else {
-              overlays[ri[i]].x = random(0, _tft->width());
-            }
-            overlays[ri[i]].y = random(ylb, yub);
+          else {
+            overlays[ri[i]].x = random(0, _tft->width()-sprite.width());
+            overlays[ri[i]].y = random(0, _tft->height()-sprite.height());
           }
           i++;
         }
@@ -437,142 +539,224 @@ void handle_overlay(std::string bgimgname, TFT_eSprite* background) {
     for (uint16_t i = 0; i < overlays.size(); i++) {
       uint8_t si = overlays[i].si;
       TFT_eSprite &sprite = get_sprite(si); 
-      //TFT_TRANSPARENT 0x0120 // This is actually a dark green
-      //0x0120 == RGB: 0, 36, 0 == #002400
-      sprite.pushToSprite(background, overlays[i].x, overlays[i].y, TFT_TRANSPARENT);
 
-      int clone_x = overlays[i].x;
-      int clone_y = overlays[i].y;
-      if (overlays[i].x < 0) {
-        clone_x = overlays[i].x + _tft->width();
-      }
-      else if (overlays[i].x + sprite.width() > _tft->width()) {
-        clone_x = overlays[i].x - _tft->width();
-      }
-
-      if (overlays[i].y < 0) {
-        clone_y = overlays[i].y + _tft->width();
-      }
-      else if (overlays[i].y + sprite.height() > _tft->height()) {
-        clone_y = overlays[i].y - _tft->height();
-      }
-
-      if (clone_x != overlays[i].x || clone_y != overlays[i].y) {
-        sprite.pushToSprite(background, clone_x, clone_y, TFT_TRANSPARENT);
-        if (0 <= clone_x && clone_x + sprite.width() <= _tft->width() && 0 <= clone_y && clone_y + sprite.height() <= _tft->height()) {
-          overlays[i].x = clone_x;
-          overlays[i].y = clone_y;
-        }
-      }
-
-          
-
-  
-       //TODO: add speed for direction. rename wind to crosswind. add a jitter checkbox. add option to preserve positions across multiple background images.
-       // change wind to descriptions instead of numbers and randomly change the winds direction
-       // give jitter both x and y components
-      int jitter = random(-2, 3);
-      //int jitter = 0;
-      int speed = sprite_settings.speeds[si];
+      //TODO: add option to preserve positions across multiple background images.
+      // give jiggle both x and y components
+      // add comments to wrap explaining corner case handling
+      // is unbound broken: all sprites eventually leave the screen and do not return?
+      int jigglex = sprite_settings.jiggles[si]*random(-2, 3);
+      int jiggley = sprite_settings.jiggles[si]*random(-2, 3);
 
       int dx = 0;
       int dy = 0;
-      if (sprite_settings.directions[si] == "fall") {
-        //overlays[i].x = overlays[i].x + jitter + speed;
-        dx = jitter + wind;
-        dy = speed;
-        overlays[i].x = overlays[i].x + dx;
-        overlays[i].y = overlays[i].y + dy;
-        if (sprite_settings.winds[si] == "calm") {
-          if (overlays[i].x < 0) {
-            overlays[i].x = 0;
-          }
-          else if (overlays[i].x + sprite.width() > _tft->width()) {
-            overlays[i].x = _tft->width() - sprite.width();
-          }
-        }
-      }
-      else if (sprite_settings.directions[si] == "rise") {
-        dx = jitter + wind;
-        dy = -1*speed;
-        overlays[i].x = overlays[i].x + dx;
-        overlays[i].y = overlays[i].y + dy;
-        if (sprite_settings.winds[si] == "calm") {
-          if (overlays[i].x < 0) {
-            overlays[i].x = 0;
-          }
-          else if (overlays[i].x + sprite.width() > _tft->width()) {
-            overlays[i].x = _tft->width() - sprite.width();
-          }
-        }
-      }
-      else if (sprite_settings.directions[si] == "forward") {
-        dx = speed;
-        dy = jitter + wind;
-        overlays[i].x = overlays[i].x + dx;
-        overlays[i].y = overlays[i].y + dy;
+      dx = overlays[i].x_dir*overlays[i].speed;
+      dx = dx + jigglex + sprite_settings.wind_speeds[si];
+      dy = overlays[i].y_dir*overlays[i].speed;
+      dy = dy + jiggley;
+      overlays[i].x = overlays[i].x + dx;
+      overlays[i].y = overlays[i].y + dy;
 
-        if (sprite_settings.winds[si] == "calm") {
-          if (overlays[i].y < 0) {
-            overlays[i].y = 0;
-          }
-          else if (overlays[i].y + sprite.height() > _tft->height()) {
-            overlays[i].y = _tft->height() - sprite.height();
-          }
-        }
+
+      bool inbounds;
+      if (overlays[i].x + sprite.width() <= 0 || overlays[i].x >= _tft->width() || overlays[i].y + sprite.height() <= 0 || overlays[i].y >= _tft->height()) {
+        inbounds = false;
       }
-      if (sprite_settings.directions[si] == "backward") {
-        dx = -1*speed;
-        dy = jitter + wind;
-        overlays[i].x = overlays[i].x + dx;
-        overlays[i].y = overlays[i].y + dy;
-        if (sprite_settings.winds[si] == "calm") {
-          if (overlays[i].y < 0) {
-            overlays[i].y = 0;
-          }
-          else if (overlays[i].y + sprite.height() > _tft->height()) {
-            overlays[i].y = _tft->height() - sprite.height();
-          }
-        }
+      else {
+        inbounds = true;
+      }
+
+//Serial.print("i: ");
+//Serial.println(i);
+//Serial.println(overlays[i].x);
+//Serial.println(overlays[i].y);
+//Serial.println(inbounds);
+
+      if (inbounds) {
+//TFT_eSprite spr0 = TFT_eSprite(_tft);
+//spr0.setColorDepth(16);
+//spr0.createSprite(sprite.width(), sprite.height());
+//spr0.fillSprite(TFT_WHITE);
+//spr0.pushToSprite(background, overlays[i].x, overlays[i].y, TFT_TRANSPARENT);
+        //TFT_TRANSPARENT 0x0120 // This is actually a dark green
+        //0x0120 == RGB: 0, 36, 0 == #002400
+        sprite.pushToSprite(background, overlays[i].x, overlays[i].y, TFT_TRANSPARENT);
       }
 
 /*
-      // use 20 as a fudge factor so character is off the screen before we reset its location
-      //uint8_t ff = 20;
-      if (overlays[i].x + sprite.width() < -ff) {
-        if (dx < 0) {
-          overlays[i].x = _tft->width();
-        }
-      }
-      else if (overlays[i].x > _tft->width() + ff) {
-        if (dx >= 0) {
-          overlays[i].x = -sprite.width();
-        }
-      }
+      // unbound -- x and y are randomized to a new initial position after exiting, so it is essentially no longer the same overlay when it reappears
+      //if (sprite_settings.edge_effects[si] == 0 && !inbounds && overlays[i].was_inbounds) {
+      if (sprite_settings.edge_effects[si] == 0 && !inbounds) {
+Serial.println("unbound run");
 
-      if (overlays[i].y + sprite.height() < -ff) {
-        if (dy < 0) {
-          overlays[i].y = _tft->height() + random(0, ff);
-        }
-      }
-      else if (overlays[i].y > _tft->height() + ff) {
-        if (dy >= 0) {
-          overlays[i].y = random(-ff-sprite.height(), -sprite.height());
-        }
-      }
+        if (overlays[i].speed != 0 || sprite_settings.wind_cats[si] != 0) {
 
-      if (wind_cnt == 0 && sprite_settings.winds[si] == "breezy") {
-        wind = random(-5, 6);
+          if (overlays[i].x + sprite.width() <= 0) { // exiting through left border
+Serial.println("exit left");
+            overlays[i].x = _tft->width() + random(0, sprite.width());
+            //overlays[i].y = overlays[i].y + random(-sprite.height(), sprite.height());
+            overlays[i].y = random(0, _tft->height());
+          }
+          else if (overlays[i].x >= _tft->width()) { // exiting through right border
+Serial.println("exit right");
+            overlays[i].x = -sprite.width() - random(0, sprite.width());
+            //overlays[i].y = overlays[i].y + random(-sprite.height(), sprite.height());
+            overlays[i].y = random(0, _tft->height());
+          }
+          else if (overlays[i].y + sprite.height() <= 0) { // exiting through top border
+Serial.println("exit top");
+            //overlays[i].x = overlays[i].x + random(-sprite.width(), sprite.width());
+            overlays[i].x = random(0, _tft->width());
+            overlays[i].y = _tft->height() + random(0, sprite.height());
+          }
+          else if (overlays[i].y >= _tft->height()) { // exiting through bottom border
+Serial.println("exit bottom");
+            //overlays[i].x = overlays[i].x + random(-sprite.width(), sprite.width());
+            overlays[i].x = random(0, _tft->width());
+            overlays[i].y = -sprite.height() - random(0, sprite.height());
+          }
+        }
+        else {
+          overlays[i].x = random(0, _tft->width()-sprite.width());
+          overlays[i].y = random(0, _tft->height()-sprite.height());
+        }
       }
-      else if (wind_cnt == 0 && sprite_settings.winds[si] == "stormy") {
-        wind = random(-10, 11);
+      // wrap -- all edges are connected together
+      else if (sprite_settings.edge_effects[si] == 1 && false) {
+        int clone_x = overlays[i].x;
+        int clone_y = overlays[i].y;
+        if (overlays[i].x < 0) {
+          clone_x = overlays[i].x + _tft->width();
+          sprite.pushToSprite(background, clone_x, clone_y, TFT_TRANSPARENT);
+        }
+        else if (overlays[i].x + sprite.width() > _tft->width()) {
+          clone_x = overlays[i].x - _tft->width();
+          sprite.pushToSprite(background, clone_x, clone_y, TFT_TRANSPARENT);
+        }
+
+        if (overlays[i].y < 0) {
+          clone_y = overlays[i].y + _tft->height();
+          sprite.pushToSprite(background, clone_x, clone_y, TFT_TRANSPARENT);
+        }
+        else if (overlays[i].y + sprite.height() > _tft->height()) {
+          clone_y = overlays[i].y - _tft->height();
+          sprite.pushToSprite(background, clone_x, clone_y, TFT_TRANSPARENT);
+        }
+
+        if (clone_x != overlays[i].x || clone_y != overlays[i].y) {
+
+//TFT_eSprite spr = TFT_eSprite(_tft);
+//spr.setColorDepth(16);
+//spr.createSprite(sprite.width(), sprite.height());
+//spr.fillSprite(TFT_RED);
+//spr.pushToSprite(background, clone_x, clone_y, TFT_TRANSPARENT);
+
+          //sprite.pushToSprite(background, clone_x, clone_y, TFT_TRANSPARENT);
+          if (0 <= clone_x && clone_x + sprite.width() <= _tft->width() && 0 <= clone_y && clone_y + sprite.height() <= _tft->height()) {
+            // if clone is completely visible that means original is completely invisible so replace original with the clone
+            overlays[i].x = clone_x;
+            overlays[i].y = clone_y;
+          }
+        }
       }
 */
+      // unbound
+      if (sprite_settings.edge_effects[si] == 0 && !inbounds && overlays[i].was_inbounds) {
+      //if (sprite_settings.edge_effects[si] == 0 && !inbounds) {
+        //if (overlays[i].x < -2*_tft->width()) {
+        if (overlays[i].x + sprite.width() <= 0) {
+Serial.println("despawn left");
+          overlays[i].x = _tft->width();
+          overlays[i].y = random(0, _tft->height()-sprite.height());
+        }
+        //else if (overlays[i].x > 3*_tft->width()) {
+        else if (overlays[i].x >= _tft->width()) {
+Serial.println("despawn right");
+          overlays[i].x = -sprite.width();
+          overlays[i].y = random(0, _tft->height()-sprite.height());
+        }
+
+        //if (overlays[i].y < -2*_tft->height()) {
+        if (overlays[i].y + sprite.width() <= 0) {
+Serial.println("despawn top");
+          overlays[i].x = random(0, _tft->width()-sprite.width());
+          overlays[i].y = _tft->height();
+        }
+        //else if (overlays[i].y > 3*_tft->height()) {
+        else if (overlays[i].y >= _tft->height()) {
+Serial.println("despawn bottom");
+          overlays[i].x = random(0, _tft->width()-sprite.width());
+          overlays[i].y = -sprite.height();
+        }
+      }
+      // wrap -- all edges are connected together
+      else if (sprite_settings.edge_effects[si] == 1) {
+        int clone_x = overlays[i].x;
+        int clone_y = overlays[i].y;
+        bool cloned = false;
+        if (overlays[i].x < 0) {
+          sprite.pushToSprite(background, overlays[i].x + _tft->width(), overlays[i].y, TFT_TRANSPARENT);
+          clone_x = overlays[i].x + _tft->width();
+          cloned = true;
+        }
+        else if (overlays[i].x + sprite.width() > _tft->width()) {
+          sprite.pushToSprite(background, overlays[i].x - _tft->width(), overlays[i].y, TFT_TRANSPARENT);
+          clone_x = overlays[i].x - _tft->width();
+          cloned = true;
+        }
+
+        if (overlays[i].y < 0) {
+          sprite.pushToSprite(background, overlays[i].x, overlays[i].y + _tft->height(), TFT_TRANSPARENT);
+          clone_y = overlays[i].y + _tft->height();
+          cloned = true;
+        }
+        else if (overlays[i].y + sprite.height() > _tft->height()) {
+          sprite.pushToSprite(background, overlays[i].x, overlays[i].y - _tft->height(), TFT_TRANSPARENT);
+          clone_y = overlays[i].y - _tft->height();
+          cloned = true;
+        }
+
+        if (cloned) {
+          sprite.pushToSprite(background, clone_x, clone_y, TFT_TRANSPARENT);
+          if (0 <= clone_x && clone_x + sprite.width() <= _tft->width() && 0 <= clone_y && clone_y + sprite.height() <= _tft->height()) {
+            // if clone is completely visible that means original is completely invisible so replace original with the clone
+            overlays[i].x = clone_x;
+            overlays[i].y = clone_y;
+          }
+        }
+      }
+      // bounce -- no energy lost
+      else if (sprite_settings.edge_effects[si] == 2) { // bounce
+        if (overlays[i].x <= 0) {
+          overlays[i].x_dir = 1;
+        }
+        else if (overlays[i].x + sprite.width() >= _tft->width()) {
+          overlays[i].x_dir = -1;
+        }
+
+        if (overlays[i].y <= 0) {
+          overlays[i].y_dir = 1;
+        }
+        else if (overlays[i].y + sprite.height() >= _tft->height()) {
+          overlays[i].y_dir = -1;
+        }
+      }
+
+//Serial.println(overlays[i].was_inbounds);
+//Serial.println("-----");
+      overlays[i].was_inbounds = inbounds;  
     }
 
     wind_cnt++;
-    if (wind_cnt > 50) {
+    if (wind_cnt > 25) {
       wind_cnt = 0;
+      for (uint8_t si = 0; si < sprites.size(); si++) {
+        if (sprite_settings.wind_cats[si] == 1) {
+          sprite_settings.wind_speeds[si] = random(-5, 6);
+        }
+        else if (sprite_settings.wind_cats[si] == 2) {
+          sprite_settings.wind_speeds[si] = random(-10, 11);
+        }
+      }
     }
   }
 }

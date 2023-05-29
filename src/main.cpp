@@ -37,7 +37,7 @@ using namespace std;
 
 //#define DEBUG
 #define MAX_IMAGE_WIDTH 240 // Adjust for your images
-#define NUM_GIF_PLAYS 2
+#define NUM_GIF_PLAYS 254
 #define SLEEP_AFTER_NUM_PLAYS_ENABLED false
 #define NUM_PLAYS_TIL_SLEEP 20
 #define BOOT_MENU_DELAY 1 // seconds

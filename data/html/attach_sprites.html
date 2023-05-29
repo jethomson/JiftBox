@@ -20,20 +20,21 @@
 		flex-wrap: wrap;
 	}
 	.grid-container {
-		flex: 1;
+		/*flex: 1;*/
 		display: grid;
-		grid-template-columns: repeat(6, auto);
+		grid-template-columns: repeat(8, auto);
 		grid-row-gap: 5px;
 		/*width: 100%;*/
 		/*height: 85vh;*/
 		/*max-width: 600px;*/
 		/*max-height: 800px;*/
-  		justify-content: center;
-		margin: 0 auto;
+    justify-content: center;
+		margin: 5px auto;
+		padding: 5px;
 		border-style: solid;
 	}
 	.grid-item-bg-img {
-		grid-column: 1 / span 6;
+		grid-column: 1 / span 8;
 		text-align: center;
 		margin: auto;
 	}
@@ -62,6 +63,9 @@
 	input[type="button"]:hover {
 		background: #0e70a4;
 	}
+	.incompatible-warning {
+	  background: yellow;
+	}
 	</style>
 </head>
 <body>
@@ -80,7 +84,7 @@
 
 
 	<script type="text/javascript">
-	var g_sprites = [];
+	let g_sprites = [];
 	// set defaults but allow for webserver to replace templates
 	// if you do not see the templates MY_WIDTH and MY_HEIGHT it is because
 	// they were replaced with numbers
@@ -101,89 +105,192 @@
 	}
 	
 
+
+  function load_bg_image(img) {
+    return new Promise((resolve, reject) => {
+      const imgsrc = img.getAttribute('data-imgsrc');
+	  	const url = base_url + imgsrc;
+	  	img.src = url;
+      img.onload = () => {
+        resolve(true);
+      };
+  		img.onerror = () => {
+        img.setAttribute("alt", `Loading image ${imgsrc} failed.`);
+  		  reject;
+  		}
+    });
+  };
+
+  // to many asynchronous calls to http server will crash the ESP32, so use a loop and await to load images in a synchronous/sequential manner
+	async function load_bg_images_sequential(el_imgs) {
+    if (!el_imgs.length) {
+			return;
+		}
+
+		for (let i = 0; i < el_imgs.length; i++) {
+      await load_bg_image(el_imgs[i]);
+    }
+	}
+
+/*
+  // this approach avoids async, await, and Promises
 	function load_bg_images_sequential(el_imgs) {
 		if (!el_imgs.length) {
 			return;
 		}
 
 		let el_img = el_imgs.shift();
-		let url = base_url + el_img.getAttribute('data-filename');
+    let imgsrc = el_img.getAttribute('data-imgsrc');
+		let url = base_url + imgsrc;
 
 		el_img.onload = function () {
-				load_bg_images_sequential(el_imgs);
+      load_bg_images_sequential(el_imgs);
 		}
+		//el_img.onerror = function () {
+    //  this.setAttribute("alt", `Loading image ${imgsrc} failed.`);
+    //  load_bg_images_sequential(el_imgs);
+		//}
 		el_img.src = url;
 	}
+*/
 
 
-	function load_sprite(el_sprite) {
-		let sprite_name = el_sprite.value;
-		let el_img = document.getElementById( "sprite_img_" + el_sprite.getAttribute("data-index") + "_" + el_sprite.getAttribute("data-filename")  );
-		if (sprite_name.startsWith("/images/sprites")) {
-			image = new Image();
-			image.onload = function () {
-					ctx = el_img.getContext('2d');
-					ctx.drawImage(this, 0, 0, this.width, this.height, 0, 0, g_sprite_canvas_wh, g_sprite_canvas_wh);
-			}
-			image.src = base_url + sprite_name;
+  function load_sprite(el_sprite) {
+ 		const sprite_name = el_sprite.value;
+  	const el_img = document.getElementById( "sprite_img_" + el_sprite.getAttribute("data-index") + "_" + el_sprite.getAttribute("data-filename")  );
+  	if (sprite_name.startsWith("/images/sprites")) {
+       return new Promise((resolve, reject) => {
+   			let image = new Image();
+ 	  		image.onload = () => {
+ 	  		  ctx = el_img.getContext('2d');
+ 	  		  ctx.drawImage(image, 0, 0, image.width, image.height, 0, 0, g_sprite_canvas_wh, g_sprite_canvas_wh);
+           resolve(true);
+ 	  		};
+    		image.onerror = () => {
+          image.setAttribute("alt", `Loading image ${base_url + sprite_name} failed.`);
+    		  reject;
+    		}
+ 	  		image.src = base_url + sprite_name;
+ 	  	});
+ 		}
+  	else {
+   		const ctx = el_img.getContext('2d');
+  		ctx.clearRect(0, 0, g_sprite_canvas_wh, g_sprite_canvas_wh);
+ 		}
+  }
+  
+  /*
+  async function load_sprite(el_sprite) {
+  		let sprite_name = el_sprite.value;
+	  	let el_img = document.getElementById( "sprite_img_" + el_sprite.getAttribute("data-index") + "_" + el_sprite.getAttribute("data-filename")  );
+	  	if (sprite_name.startsWith("/images/sprites")) {
+  			image = new Image();
+	  		image.src = base_url + sprite_name;
+        await image
+          .decode()
+          .then(() => {
+            ctx = el_img.getContext('2d');
+            ctx.drawImage(image, 0, 0, image.width, image.height, 0, 0, g_sprite_canvas_wh, g_sprite_canvas_wh);
+          })
+          .catch((encodingError) => {
+            // Do something with the error.
+        });
+  		}
+	  	else {
+    		ctx = el_img.getContext('2d');
+	  		ctx.clearRect(0, 0, g_sprite_canvas_wh, g_sprite_canvas_wh);
+  		}
+  }
+  */
+
+  async function load_sprites_sequential(el_sprites) {
+		if (!el_sprites.length) {
+			return;
 		}
-		else {
-  		ctx = el_img.getContext('2d');
-			ctx.clearRect(0, 0, g_sprite_canvas_wh, g_sprite_canvas_wh);
-		}
+
+		for (let i = 0; i < el_sprites.length; i++) {
+      await load_sprite(el_sprites[i]);
+    }
 	}
 
 
 	function create_sprite_settings_ui(responseText) {
-		var maindiv = document.getElementById("maindiv");
-		var container = document.getElementById("flex_container");
+		let maindiv = document.getElementById("maindiv");
+		let container = document.getElementById("flex_container");
 
-		var insert_point = document.getElementById("insert_before_here");
+		let insert_point = document.getElementById("insert_before_here");
 
 		if (responseText != "") {
-			var files = responseText.split('\n');
-			for (var i in files) {
+			let files = responseText.split('\n');
+			for (let i in files) {
 			  // only want background image filenames
-				if (files[i] != "" && !files[i].startsWith('/images/sprites/') && !files[i].endsWith('/')) {
-					var filename = files[i];
+				if (files[i] != "" && !files[i].startsWith('/images/sprites/') && files[i].indexOf('/thumbnails/') == -1 && !files[i].endsWith('/')) {
+					let filename = files[i];
 					filename = filename.slice(0, filename.lastIndexOf('\t'));
 
-					var sprite_div = document.createElement("div");
+					let sprite_div = document.createElement("div");
 					sprite_div.classList.add("grid-container");
 
-					var bg_img = document.createElement("img");
+					let bg_img = document.createElement("img");
 					bg_img.classList.add("grid-item-bg-img");
 					bg_img.setAttribute("id", 'bg_img_'+filename);
 					bg_img.setAttribute("data-filename", filename);
-					bg_img.setAttribute("alt", `Loading image ${filename}. GIFs take a while to load.`);
+					let imgsrc = filename;
+					if (imgsrc.endsWith(".gif")) {
+            basename_gif = filename.split("/").pop();
+            basename_png = basename_gif.replace(".gif", ".png");
+            filename_thumb = filename.replace(basename_gif, "thumbnails/"+basename_png);
+            //if (files.indexOf(filename_thumb) > -1) {
+            if (files.findIndex(entry => entry.includes(filename_thumb)) > -1) {
+              imgsrc = filename_thumb;
+            }
+					}
+					bg_img.setAttribute("data-imgsrc", imgsrc);
+					bg_img.setAttribute("alt", `Loading image ${imgsrc}. GIFs take a while to load.`);
 					bg_img.width = g_bg_canvas_w;
 					bg_img.style.width = g_bg_canvas_w + "px";
 					bg_img.height = g_bg_canvas_h;
 					bg_img.style.height = g_bg_canvas_h + "px";
 					sprite_div.appendChild(bg_img);
 
-					var label
+					let label
 					label = document.createElement("label");
 					label.innerHTML = ""; // thumbnail
 					sprite_div.appendChild(label);
+					
 					label = document.createElement("label");
 					label.innerHTML = "Name";
 					sprite_div.appendChild(label);
+					
 					label = document.createElement("label");
 					label.innerHTML = "Count";
 					sprite_div.appendChild(label);
+					
 					label = document.createElement("label");
 					label.innerHTML = "Direction";
 					sprite_div.appendChild(label);
+					
 					label = document.createElement("label");
-					label.innerHTML = "Speed";
+          label.innerHTML = "Speed";
 					sprite_div.appendChild(label);
+					
 					label = document.createElement("label");
-					label.innerHTML = "Crosswind";
+          label.innerHTML = "Jiggle";
+					sprite_div.appendChild(label);
+					
+          label = document.createElement("label");
+					label.innerHTML = "Wind"; // use Crosswind and program wind to always be at a right angle to Direction?
+					sprite_div.appendChild(label);
+					
+					label = document.createElement("label");
+					label.innerHTML = "Edge";
 					sprite_div.appendChild(label);
 	
-					for (var onum = 0; onum < 3; onum++) {
-						var img = document.createElement("canvas");
+					for (let onum = 0; onum < 3; onum++) {
+            // ****************
+					  // sprite thumbnail
+            // ****************
+						let img = document.createElement("canvas");
 						img.setAttribute("id", 'sprite_img_'+onum+'_'+filename);
 						img.width = g_sprite_canvas_wh;
 						img.style.width = g_sprite_canvas_wh + "px";
@@ -191,19 +298,22 @@
 						img.style.height = g_sprite_canvas_wh + "px";
 						sprite_div.appendChild(img);
 
-						var sprite_select = document.createElement("select");
+            // **************
+            // sprite chooser
+            // **************
+						let sprite_select = document.createElement("select");
 						sprite_select.setAttribute("id", 'sprite_select_'+onum+'_'+filename);
 						sprite_select.setAttribute("name", 'sprite_select_'+onum+'_'+filename);
 						sprite_select.setAttribute("form", "sprites_form");
 						sprite_select.setAttribute("data-filename", filename);
 						sprite_select.setAttribute("data-index", onum);
-						sprite_select.setAttribute("onchange", "reset_upload_status(); load_sprite(this)");
+						sprite_select.setAttribute("onchange", "update_ui(this); load_sprite(this)");
 	
-						var option = document.createElement("option");
+						let option = document.createElement("option");
 						option.text = "No sprite";
 						sprite_select.add(option);
 						for (let j = 0; j < g_sprites.length; j++) {
-							var option = document.createElement("option");
+							option = document.createElement("option");
 							option.value = g_sprites[j]; 
 							option.text = g_sprites[j].replace('/images/sprites/', '');
 							sprite_select.add(option);
@@ -211,8 +321,10 @@
 
 						sprite_div.appendChild(sprite_select);
 
-
-						var sprite_cnt = document.createElement("input");
+            // **************************
+					  // number of sprite instances
+            // **************************
+						let sprite_cnt = document.createElement("input");
 						sprite_cnt.setAttribute("type", "number");
 						sprite_cnt.style.width = "40px";
 						sprite_cnt.setAttribute("quantity", 1);
@@ -222,79 +334,201 @@
 						sprite_cnt.setAttribute("id", 'sprite_count_'+onum+'_'+filename);
 						sprite_cnt.setAttribute("name", 'sprite_count_'+onum+'_'+filename);
 						sprite_cnt.setAttribute("form", "sprites_form");
-						sprite_cnt.setAttribute("onchange", "reset_upload_status()");
+						sprite_cnt.setAttribute("onchange", "update_ui(this)");
 
 						sprite_div.appendChild(sprite_cnt);
 
-						
-						var dir_select = document.createElement("select");
-						dir_select.setAttribute("id", 'sprite_dir_'+onum+'_'+filename);
-						dir_select.setAttribute("name", 'sprite_dir_'+onum+'_'+filename);
+            // ************************
+					  // sprite direction chooser
+            // ************************
+						let dir_select = document.createElement("select");
+						dir_select.setAttribute("id", "sprite_dir_"+onum+"_"+filename);
+						dir_select.setAttribute("name", "sprite_dir_"+onum+"_"+filename);
 						dir_select.setAttribute("form", "sprites_form");
-						dir_select.setAttribute("onchange", "reset_upload_status()");
+						dir_select.setAttribute("onchange", "update_ui(this)");
 						
-						var option = document.createElement("option");
-						option.text = "fall";
-						option.value = "fall";
+            option = document.createElement("option");
+						option.text = "random, individual";
+						option.value = -2;
 						dir_select.add(option);
-						var option = document.createElement("option");
-						option.text = "rise";
-						option.value = "rise";
+            option = document.createElement("option");
+						option.text = "random, group";
+						option.value = -1;
 						dir_select.add(option);
-						var option = document.createElement("option");
-						option.text = "forward";
-						option.value = "forward";
+            option = document.createElement("option");
+						option.text = "none";
+						option.value = 0;
 						dir_select.add(option);
-						var option = document.createElement("option");
-						option.text = "backward";
-						option.value = "backward";
+            letption = document.createElement("option");
+						option.text = "↑";
+						option.value = 1;
+						dir_select.add(option);
+						option = document.createElement("option");
+						option.text = "↗";
+						option.value = 2;
+						dir_select.add(option);
+						option = document.createElement("option");
+						option.text = "→";
+						option.value = 3;
+						dir_select.add(option);
+						option = document.createElement("option");
+						option.text = "↘";
+						option.value = 4;
+						dir_select.add(option);
+            option = document.createElement("option");
+						option.text = "↓";
+						option.value = 5;
+						dir_select.add(option);
+						option = document.createElement("option");
+						option.text = "↙";
+						option.value = 6;
+						dir_select.add(option);
+						option = document.createElement("option");
+						option.text = "←";
+						option.value = 7;
+						dir_select.add(option);						
+						option = document.createElement("option");
+						option.text = "↖";
+						option.value = 8;
 						dir_select.add(option);
 
 						sprite_div.appendChild(dir_select);
 
+            // ************
+					  // sprite speed
+            // ************
+						let speed_select = document.createElement("select");
+						speed_select.setAttribute("id", "sprite_speed_"+onum+"_"+filename);
+						speed_select.setAttribute("name", "sprite_speed_"+onum+"_"+filename);
+						speed_select.setAttribute("form", "sprites_form");
+						speed_select.setAttribute("onchange", "update_ui(this)");
 						
-						var speed = document.createElement("input");
-						speed.setAttribute("type", "number");
-						speed.style.width = "40px";
-						speed.setAttribute("quantity", 1);
-						speed.setAttribute("min", 0);
-						speed.setAttribute("max", 11);
-						speed.setAttribute("value", 0);
-						speed.setAttribute("id", 'sprite_speed_'+onum+'_'+filename);
-						speed.setAttribute("name", 'sprite_speed_'+onum+'_'+filename);
-						speed.setAttribute("form", "sprites_form");
-						speed.setAttribute("onchange", "reset_upload_status()");
+            option = document.createElement("option");
+						option.text = "random, individual";
+						option.value = -2;
+						speed_select.add(option);
+            option = document.createElement("option");
+						option.text = "random, group";
+						option.value = -1;
+						speed_select.add(option);
+            option = document.createElement("option");
+						option.text = "0";
+						option.value = 0;
+						speed_select.add(option);
+            option = document.createElement("option");
+						option.text = "1";
+						option.value = 1;
+						speed_select.add(option);
+            option = document.createElement("option");
+						option.text = "2";
+						option.value = 2;
+						speed_select.add(option);
+						option = document.createElement("option");
+						option.text = "3";
+						option.value = 3;
+						speed_select.add(option);
+						option = document.createElement("option");
+						option.text = "4";
+						option.value = 4;
+						speed_select.add(option);
+						option = document.createElement("option");
+						option.text = "5";
+						option.value = 5;
+						speed_select.add(option);
+            option = document.createElement("option");
+						option.text = "6";
+						option.value = 6;
+						speed_select.add(option);
+						option = document.createElement("option");
+						option.text = "7";
+						option.value = 7;
+						speed_select.add(option);
+						option = document.createElement("option");
+						option.text = "8";
+						option.value = 8;
+						speed_select.add(option);						
+						option = document.createElement("option");
+						option.text = "9";
+						option.value = 9;
+						speed_select.add(option);
+						option = document.createElement("option");
+						option.text = "10";
+						option.value = 10;
+						speed_select.add(option);
+						option = document.createElement("option");
+						option.text = "It goes to 11.";
+						option.value = 11;
+						speed_select.add(option);
 
-						sprite_div.appendChild(speed);
+						sprite_div.appendChild(speed_select);
 
 
-						var wind_select = document.createElement("select");
+            // *********************
+					  // jiggle checkbox
+            // *********************						
+						let jiggle_checkbox = document.createElement("input");
+						jiggle_checkbox.type = "checkbox";
+						jiggle_checkbox.setAttribute("id", "sprite_jiggle_"+onum+"_"+filename);
+						jiggle_checkbox.setAttribute("name", "sprite_jiggle_"+onum+"_"+filename);
+						jiggle_checkbox.setAttribute("form", "sprites_form");
+						jiggle_checkbox.setAttribute("onchange", "update_ui(this)");
+						sprite_div.appendChild(jiggle_checkbox);
+
+            // *********************
+					  // wind category chooser
+            // *********************
+						let wind_select = document.createElement("select");
 						wind_select.setAttribute("id", 'sprite_wind_'+onum+'_'+filename);
 						wind_select.setAttribute("name", 'sprite_wind_'+onum+'_'+filename);
 						wind_select.setAttribute("form", "sprites_form");
-						wind_select.setAttribute("onchange", "reset_upload_status()");
+						wind_select.setAttribute("onchange", "update_ui(this)");
 						
-						var option = document.createElement("option");
-						option.text = "calm";
-						option.value = "calm";
+						option = document.createElement("option");
+						option.text = "none";
+						option.value = "0";
 						wind_select.add(option);
-						var option = document.createElement("option");
+						option = document.createElement("option");
 						option.text = "breezy";
-						option.value = "breezy";
+						option.value = "1";
 						wind_select.add(option);
-						var option = document.createElement("option");
+						option = document.createElement("option");
 						option.text = "stormy";
-						option.value = "stormy";
+						option.value = "2";
 						wind_select.add(option);
 
 						sprite_div.appendChild(wind_select);
+
+
+            // *********************************************************
+					  // how the sprite is handled when it reaches the screen edge
+            // *********************************************************
+						let edge_effect_select = document.createElement("select");
+						edge_effect_select.setAttribute("id", 'sprite_edge_effect_'+onum+'_'+filename);
+						edge_effect_select.setAttribute("name", 'sprite_edge_effect_'+onum+'_'+filename);
+						edge_effect_select.setAttribute("form", "sprites_form");
+						edge_effect_select.setAttribute("onchange", "update_ui(this)");
+						
+						option = document.createElement("option");
+						option.text = "unbound";
+						option.value = "0";
+						edge_effect_select.add(option);
+						option = document.createElement("option");
+						option.text = "wrap";
+						option.value = "1";
+						edge_effect_select.add(option);
+						option = document.createElement("option");
+						option.text = "bounce";
+						option.value = "2";
+						edge_effect_select.add(option);
+						
+						sprite_div.appendChild(edge_effect_select);
 					}
 					container.insertBefore(sprite_div, insert_point);
 				}
 			}
 		}
 		else {
-			var not_found_div = document.createElement("div");
+			let not_found_div = document.createElement("div");
 			not_found_div.innerText = "No files found.";
 			not_found_div.classList = "grid-item-msg";
 			not_found_div.style = "color: white; text-align: center; width: 100%;"
@@ -307,15 +541,101 @@
 		let el_imgs = document.querySelectorAll('[id^="bg_img_"]');
 		load_bg_images_sequential([ ...el_imgs]);
 	}
+
+
 	
+	function update_ui(el) {
+	  // if overlay is No Overlay OR count is 0 no sprite will be displayed
+	  // so it is not necessary for both No Overlay and 0 to be set
+	  // a user may prefer to set a sprite to No Overlay without the other settings being erased
+	  // so do not set count to 0 if No Overlay is selected
+    //if (el.id.startsWith("sprite_select_")) {
+    //  let count_id = el.id.replace("sprite_select_", "sprite_count_");
+    //  let el_count = document.getElementById(count_id)
+    //  if (el.options[el.selectedIndex].text == "No Overlay") {
+    //    el_count.value = "0";
+    //  }
+    //}
+    if (el.id.startsWith("sprite_dir_")) {
+      let speed_id = el.id.replace("sprite_dir_", "sprite_speed_");
+      let el_speed = document.getElementById(speed_id)
+      if (el.options[el.selectedIndex] && el.options[el.selectedIndex].text == "none") {
+        for (let option of el_speed.options) {
+          if (option.value != 0) {
+            option.disabled = true;
+          }
+          else {
+            option.disabled = false;
+            option.selected = true;
+          }
+        }
+      }
+      else {
+        for (let option of el_speed.options) {
+          if (option.value != 0) {
+            option.disabled = false;
+          }
+          else {
+            option.disabled = true;
+          }
+        }
+        if (el_speed.options[el_speed.selectedIndex].value == 0) {
+          el_speed.options[0].selected = true;
+        }
+      }
+    }
+    else if (el.id.startsWith("sprite_speed_")) {
+      let dir_id = el.id.replace("sprite_speed_", "sprite_dir_");
+      let el_dir = document.getElementById(dir_id)
+      if (el.value == 0) {
+        for (let option of el_dir.options) {
+          if (option.text == "none") {
+            option.selected = true;
+          }
+        }
+        for (let option of el.options) {
+          if (option.value != 0) {
+            option.disabled = true;
+          }
+        }
+      }
+    }
+    else if (el.id.startsWith("sprite_wind_")) {
+      let edge_effect_id = el.id.replace("sprite_wind_", "sprite_edge_effect_");
+      let el_edge_effect = document.getElementById(edge_effect_id)
+      if (el.options[el.selectedIndex].text == "none") {
+        for (let option of el_edge_effect.options) {
+          option.disabled = false;
+        }
+      }
+      else {
+        for (let option of el_edge_effect.options) {
+          if (option.text == "bounce") {
+            option.disabled = true;
+            el_edge_effect.options[0].selected = true;
+          }
+        }
+      }
+    }
+    else if (el.id.startsWith("sprite_edge_effect_")) {
+      let wind_id = el.id.replace("sprite_edge_effect_", "sprite_wind_");
+      let el_wind = document.getElementById(wind_id)
+      if (el.options[el.selectedIndex].text == "bounce") {
+        el_wind.options[0].selected = true;
+      }
+    }
+		document.getElementById("btn_upload_settings").textContent = "Update Sprites";
+	}
+
+
 	function create_sprite_files_list(responseText) {
 		if (responseText != "") {
-			var files = responseText.split('\n');
-			for (var i in files) {
+			let files = responseText.split('\n');
+			for (let i in files) {
 			  // only want sprite filenames
 				if (files[i] != "" && files[i].startsWith('/images/sprites/') && !files[i].endsWith('/')) {
-					var fnfs = files[i]; // filename and filesize separated by tab character
-					var filename = fnfs.slice(0, fnfs.lastIndexOf('\t'));
+					let fnfs = files[i]; // filename and filesize separated by tab character
+					let filename = fnfs.slice(0, fnfs.lastIndexOf('\t'));
 					if (filename.toLowerCase().endsWith(".bmp")) {
 						g_sprites.push(filename);
 					}
@@ -325,21 +645,26 @@
 	}
 	
 	function load_sprite_settings(sprite_settings) {
-    console.log(sprite_settings);
 		let el_imgs = document.querySelectorAll('[id^="sprite_img_"]');
 		let el_sprites = document.querySelectorAll('[id^="sprite_select_"]');
 		let el_counts = document.querySelectorAll('[id^="sprite_count_"]');
 		let el_directions = document.querySelectorAll('[id^="sprite_dir_"]');
 		let el_speeds = document.querySelectorAll('[id^="sprite_speed_"]');
+		let el_jiggles = document.querySelectorAll('[id^="sprite_jiggle_"]');
 		let el_winds = document.querySelectorAll('[id^="sprite_wind_"]');
-		
+		let el_edge_effects = document.querySelectorAll('[id^="sprite_edge_effect_"]');
+
+    let el_sprite_queue = [];
+
 		for (let i = 0; i < el_sprites.length; i++) {
 			let el_img = el_imgs[i];
 			let el_sprite = el_sprites[i];
 			let el_count = el_counts[i];
 			let el_direction = el_directions[i];
 			let el_speed = el_speeds[i];
+			let el_jiggle = el_jiggles[i];
 			let el_wind = el_winds[i];
+			let el_edge_effect = el_edge_effects[i];
 			
 			let filename = el_sprite.getAttribute('data-filename');
 			let index = parseInt(el_sprite.getAttribute('data-index'));
@@ -352,28 +677,47 @@
 						el_sprite.selectedIndex = j;
 						//if (sprite_settings[filename][index]['file'].startsWith("/sprites")) {
 						if (sprite_settings[filename][index]['file'].toLowerCase().endsWith(".bmp")) {
-							load_sprite(el_sprite);
+							//load_sprite(el_sprite);
+							el_sprite_queue.push(el_sprite);
 						}
 						value = sprite_settings[filename][index]['count'];
 						if (typeof value !== 'undefined') {
 							el_count.value = parseInt(value);
 						}
-						value = sprite_settings[filename][index]['direction'];
+            value = sprite_settings[filename][index]['direction'];
 						if (typeof value !== 'undefined') {
 							el_direction.value = value;
+							update_ui(el_direction);
 						}
 						value = parseInt(sprite_settings[filename][index]['speed']);
 						if (typeof value !== 'undefined') {
 							el_speed.value = parseInt(value);
+							update_ui(el_speed);
+						}
+						value = sprite_settings[filename][index]['jiggle'];
+						if (typeof value !== 'undefined') {
+					    if (value == "1") {
+							  el_jiggle.checked = true;
+							}
+							else {
+							  el_jiggle.checked = false;
+							}
 						}
 						value = sprite_settings[filename][index]['wind'];
 						if (typeof value !== 'undefined') {
 							el_wind.value = value;
+							update_ui(el_wind);
+						}
+						value = sprite_settings[filename][index]['edge_effect'];
+						if (typeof value !== 'undefined') {
+							el_edge_effect.value = value;
+							update_ui(el_edge_effect);
 						}
 						break;
 					}
 				}
 			}
+			load_sprites_sequential(el_sprite_queue);
 		}
 	}
 
@@ -388,17 +732,16 @@
 			document.getElementById("btn_upload_settings").textContent = "Update Failed :(";
 		}
 	}
-	
-	function reset_upload_status() {
-		document.getElementById("btn_upload_settings").textContent = "Update Sprites";
-	}
+
 	
 	function upload_settings() {
 		let el_sprites = document.querySelectorAll('[id^="sprite_select_"]');
 		let el_counts = document.querySelectorAll('[id^="sprite_count_"]');
 		let el_directions = document.querySelectorAll('[id^="sprite_dir_"]');
 		let el_speeds = document.querySelectorAll('[id^="sprite_speed_"]');
+		let el_jiggles = document.querySelectorAll('[id^="sprite_jiggle_"]');
 		let el_winds = document.querySelectorAll('[id^="sprite_wind_"]');
+		let el_edge_effects = document.querySelectorAll('[id^="sprite_edge_effect_"]');
 		
 		sprites_dict = {};
 		for (let i = 0; i < el_sprites.length; i++) {
@@ -406,18 +749,29 @@
 			let el_count = el_counts[i];
 			let el_direction = el_directions[i];
 			let el_speed = el_speeds[i];
+			let el_jiggle = el_jiggles[i];
 			let el_wind = el_winds[i];
+			let el_edge_effect = el_edge_effects[i];
 	
 			let filename = el_sprite.getAttribute('data-filename');
 			let count = el_count.value; // do not use parseInt() because keeping everything as a string makes it easier to parse the JSON file
 			let sprite_fname = el_sprite.options[el_sprite.selectedIndex].value;
 			let direction = el_direction.options[el_direction.selectedIndex].value;
 			let speed = el_speed.value;
+			let jiggle = (el_jiggle.checked) ? "1" : "0";
 			let wind = el_wind.options[el_wind.selectedIndex].value;
+			let edge_effect = el_edge_effect.options[el_edge_effect.selectedIndex].value;
 			if (!(filename in sprites_dict)) {
 				sprites_dict[filename] = [];
 			}
-			sprites_dict[filename].push({"file": sprite_fname, 'count': count, 'direction': direction, 'speed': speed, 'wind': wind});
+			if (speed == "0") {
+			  direction = "0";
+			}
+			if (edge_effect == "bounce") {
+			  wind = "0"
+			}
+			// everything in the JSON file must be a string for microcontroller code to work properly!
+			sprites_dict[filename].push({"file": sprite_fname, "count": count, "direction": direction, "speed": speed, "jiggle": jiggle, "wind": wind, "edge_effect": edge_effect});
 		}
 	
 		console.log(JSON.stringify(sprites_dict));
