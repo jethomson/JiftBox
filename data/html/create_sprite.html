@@ -496,7 +496,7 @@
 	dcanvas.style.width = cwidth + "px";
 	dcanvas.style.height = cheight + "px";
 	dcanvas.width = Math.floor(cwidth * ratio);
-	dcanvas.height = Math.floor(cheight * ratio)
+	dcanvas.height = Math.floor(cheight * ratio);
 	dcanvas.getContext("2d").scale(ratio, ratio);
 
 	input.style.width = display_width + "px";
@@ -574,7 +574,7 @@
 	}
 
 	function upload_status(json) {
-		if (json["file_upload_status"] == 0) {
+		if (json["upload_status"] == 0) {
 			//console.log('File uploaded successfully.');
 			document.getElementById("btn_upload_sprite").textContent = "Upload Successful!";
 		}
@@ -587,10 +587,10 @@
 	function upload() {
 		//ucanvas.toBlob((blob) => { // Chrome will not convert blob to PNG so use custom code
 		CanvasToBMP.toBlob(ucanvas, 16, (blob) => {
-			const filename = '/images/sprites/' + document.getElementById('filename').value + '.bmp';
+			const filename = 'images/sprites/' + document.getElementById('filename').value + '.bmp';
 			let data = new FormData();
 			data.append("upload", blob, filename);
-			fetch(base_url+'/file_upload', {method:"POST", body:data})
+			fetch(base_url+'/upload', {method:"POST", body:data})
 				.then(response => response.json())
 				.then(data => upload_status(data));
 		}, 'image/bmp');

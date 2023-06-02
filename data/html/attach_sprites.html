@@ -119,9 +119,9 @@
   		  reject;
   		}
     });
-  };
+  }
 
-  // to many asynchronous calls to http server will crash the ESP32, so use a loop and await to load images in a synchronous/sequential manner
+  // too many asynchronous calls to http server will crash the ESP32, so use a loop and await to load images in a synchronous/sequential manner
 	async function load_bg_images_sequential(el_imgs) {
     if (!el_imgs.length) {
 			return;
@@ -723,7 +723,7 @@
 
 
 	function upload_status(json) {
-		if (json["file_upload_status"] == 0) {
+		if (json["upload_status"] == 0) {
 			//console.log('File uploaded successfully.');
 			document.getElementById("btn_upload_settings").textContent = "Update Successful!";
 		}
@@ -780,7 +780,7 @@
 		const blob = new Blob([JSON.stringify(sprites_dict)], { type: "application/json" });
 		form_data.append("upload", blob, "/sprite_settings.json");
 		
-		fetch(base_url+'/file_upload', {method:"POST", body:form_data})
+		fetch(base_url+'/upload', {method:"POST", body:form_data})
 			.then(response => response.json())
 			.then(data => upload_status(data));
 	}

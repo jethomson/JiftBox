@@ -47,7 +47,7 @@ uint16_t width = 0;
 uint16_t height = 0;
 String ratio;
 
-bool file_upload_success = false;
+bool upload_status = false;
 
 
 class CaptiveRequestHandler : public AsyncWebHandler {
@@ -69,96 +69,28 @@ public:
 };
 
 
-void handle_file_upload(AsyncWebServerRequest *request, const String &filename, size_t index, uint8_t *data, size_t len, bool final) {
 
-  //ESP.wdtDisable();
-
-  static File fs_file; //new file to be written to the filesystem
-
-  file_upload_success = false;
-
-  if (!index) {
-    /*
-    size_t filesize = 0;
-
-    // contentLength() includes the count of bytes in bin file plus the bytes in the header and footer.
-    // these extra bytes will cause the writing of a filesystem to fail
-    // so use a separate form input on the upload page to send the actual filesize alongside the bin file
-    if (request->hasParam("filesize", true)) {
-      filesize = request->getParam("filesize", true)->value().toInt();
-    }
-    else {
-      // this doesn't work for spiffs or littlefs 
-      filesize = request->contentLength();
-    }
-    */
-
-    DEBUG_PRINTLN("inside if index: ");
-
-    // previous file should not still be open
-    if (fs_file) {
-      delay(1); 
-      fs_file.close();
-    }
-
-    fs_file = LittleFS.open(filename, "w");
-  }
-
-  if (fs_file) {
-    for(size_t i = 0; i < len; i++){
-      fs_file.write(data[i]);
-    }
-
-    if (final) {
-      if (fs_file) {
-        delay(1); 
-        fs_file.close();
-      }
-
-      DEBUG_PRINTF("upload complete: %s, %u B\n", filename.c_str(), index+len);
-      DEBUG_CONSOLE.flush();
-      file_upload_success = true;
-    }
-  }
-  else if (final) {
-      DEBUG_PRINTF("upload failed: %s, %u B\n", filename.c_str(), index+len);
-      DEBUG_CONSOLE.flush();
-      file_upload_success = false;
-  }
-}
-
-void handle_folder_upload(AsyncWebServerRequest *request, const String &param_path, size_t index, uint8_t *data, size_t len, bool final) {
+void handle_upload(AsyncWebServerRequest *request, const String &param_path, size_t index, uint8_t *data, size_t len, bool final) {
 
   //ESP.wdtDisable();
 
   static File fs_file; //new file to be written to the filesystem
   static String fs_path;
 
+  upload_status = false;
+
   if (!index) {
-    /*
-    size_t filesize = 0;
-
-    // contentLength() includes the count of bytes in bin file plus the bytes in the header and footer.
-    // these extra bytes will cause the writing of a filesystem to fail
-    // so use a separate form input on the upload page to send the actual filesize alongside the bin file
-    if (request->hasParam("filesize", true)) {
-      filesize = request->getParam("filesize", true)->value().toInt();
-    }
-    else {
-      // this doesn't work for spiffs or littlefs 
-      filesize = request->contentLength();
-    }
-    */
-
-    DEBUG_PRINT("if index: ");
-    DEBUG_PRINTLN(param_path);
-
-    String param_path_top_dir = "/";
-    param_path_top_dir += param_path.substring(0, param_path.indexOf('/'));
+    DEBUG_PRINTLN("inside if index: ");
 
     fs_path = "";
-    if (param_path_top_dir != IMG_ROOT) {
-      fs_path = IMG_ROOT;
+    if (request->hasParam("folder_upload", true)) {
+      DEBUG_PRINTLN("folder_upload");
+      String param_path_top_dir = "/";
+      param_path_top_dir += param_path.substring(0, param_path.indexOf('/'));
+
+      if (param_path_top_dir != IMG_ROOT) {
+        fs_path = IMG_ROOT;
+      }
     }
 
     fs_path += "/";
@@ -172,30 +104,31 @@ void handle_folder_upload(AsyncWebServerRequest *request, const String &param_pa
       fs_file.close();
     }
 
-    DEBUG_PRINT("fs_path: ");
-    DEBUG_PRINTLN(fs_path);
     fs_file = LittleFS.open(fs_path, "w");
   }
 
-  for(size_t i = 0; i < len; i++){
-    fs_file.write(data[i]);
-  }
-
-  if (final) {
-    if (fs_file) {
-      delay(1); 
-      fs_file.close();
+  if (fs_file) {
+    for(size_t i = 0; i < len; i++){
+      fs_file.write(data[i]);
     }
 
-    DEBUG_PRINTF("upload complete: %s, %u B\n", fs_path.c_str(), index+len);
-    DEBUG_CONSOLE.flush();
+    if (final) {
+      if (fs_file) {
+        delay(1); 
+        fs_file.close();
+      }
 
-    // if want to load a page after the upload is finished, do so here.
-    //request->send(LittleFS, "/remove.html");
+      DEBUG_PRINTF("upload complete: %s, %u B\n", fs_path.c_str(), index+len);
+      DEBUG_CONSOLE.flush();
+      upload_status = true;
+    }
   }
-
+  else if (final) {
+      DEBUG_PRINTF("upload failed: %s, %u B\n", fs_path.c_str(), index+len);
+      DEBUG_CONSOLE.flush();
+      upload_status = false;
+  }
 }
-
 
 void create_dirs(String path) {
   int f = path.indexOf('/');
@@ -540,20 +473,20 @@ void web_server_initiate(void) {
 
 
 
-    //OTA update via web page
     //AsyncCallbackWebHandler& on(const char* uri, WebRequestMethodComposite method, ArRequestHandlerFunction onRequest, ArUploadHandlerFunction onUpload);
-    web_server.on("/folder_upload", HTTP_POST, [](AsyncWebServerRequest *request) {
-      request->redirect("/upload.html");
-    }, handle_folder_upload);
+    //web_server.on("/folder_upload", HTTP_POST, [](AsyncWebServerRequest *request) {
+    //  request->redirect("/upload.html");
+    //}, handle_folder_upload);
 
-    web_server.on("/file_upload", HTTP_POST, [](AsyncWebServerRequest *request) {
-      if (file_upload_success) {
-        request->send(200, "application/json", "{\"file_upload_status\": 0}"); // maybe return filesize instead so client can verify
+    //AsyncCallbackWebHandler& on(const char* uri, WebRequestMethodComposite method, ArRequestHandlerFunction onRequest, ArUploadHandlerFunction onUpload);
+    web_server.on("/upload", HTTP_POST, [](AsyncWebServerRequest *request) {
+      if (upload_status) {
+        request->send(200, "application/json", "{\"upload_status\": 0}"); // maybe return filesize instead so client can verify
       }
       else {
-        request->send(500, "application/json", "{\"file_upload_status\": -1}");
+        request->send(500, "application/json", "{\"upload_status\": -1}");
       }
-    }, handle_file_upload);
+    }, handle_upload);
 
     web_server.on("/file_list", HTTP_GET, [](AsyncWebServerRequest *request) {
       request->send(200, "text/plain", file_list);
