@@ -126,11 +126,16 @@
     //update_button_text(0);
 		let form_data = new FormData(document.getElementById("upload"));
 		let files = document.getElementById("file").files;
-    for (let i = 0; i < files.length; i++) {
-      if (files[i].name.endsWith(".gif")) {
-        await convert_to_thumbnail(files[i], form_data);
-      }
-		}
+		
+    //for (let i = 0; i < files.length; i++) {
+    //  if (files[i].name.endsWith(".gif")) {
+    //    await convert_to_thumbnail(files[i], form_data);
+    //  }
+		//}
+		
+    const promises = [...files].map(file => convert_to_thumbnail(file, form_data))
+    await Promise.all(promises)
+
 		fetch(base_url+'/upload', {method:"POST", body:form_data})
   		.then(response => response.json())
 			.then(data => upload_status(data));
