@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" class="">
 <head>
-	<meta charset='utf-8'>
+	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
 	<title>Attach Sprites</title>
 	<style>
@@ -96,7 +96,7 @@
 	}
 	const g_sprite_canvas_wh = 33;
 	
-	base_url = '';
+	base_url = "";
 	if (window.location.protocol == "file:") {
 		// makes for easier debugging.
 		// if html is loaded locally, can see the results of editing more easily.
@@ -108,8 +108,11 @@
 
   function load_bg_image(img) {
     return new Promise((resolve, reject) => {
-      const imgsrc = img.getAttribute('data-imgsrc');
-	  	const url = base_url + imgsrc;
+      const imgsrc = img.getAttribute("data-imgsrc");
+	  	let url = base_url + imgsrc;
+	  	if (imgsrc.startsWith("data:")) {
+	  	  url = imgsrc;
+	  	}
 	  	img.src = url;
       img.onload = () => {
         resolve(true);
@@ -140,7 +143,7 @@
 		}
 
 		let el_img = el_imgs.shift();
-    let imgsrc = el_img.getAttribute('data-imgsrc');
+    let imgsrc = el_img.getAttribute("data-imgsrc");
 		let url = base_url + imgsrc;
 
 		el_img.onload = function () {
@@ -162,7 +165,7 @@
        return new Promise((resolve, reject) => {
    			let image = new Image();
  	  		image.onload = () => {
- 	  		  ctx = el_img.getContext('2d');
+ 	  		  ctx = el_img.getContext("2d");
  	  		  ctx.drawImage(image, 0, 0, image.width, image.height, 0, 0, g_sprite_canvas_wh, g_sprite_canvas_wh);
            resolve(true);
  	  		};
@@ -174,7 +177,7 @@
  	  	});
  		}
   	else {
-   		const ctx = el_img.getContext('2d');
+   		const ctx = el_img.getContext("2d");
   		ctx.clearRect(0, 0, g_sprite_canvas_wh, g_sprite_canvas_wh);
  		}
   }
@@ -189,7 +192,7 @@
         await image
           .decode()
           .then(() => {
-            ctx = el_img.getContext('2d');
+            ctx = el_img.getContext("2d");
             ctx.drawImage(image, 0, 0, image.width, image.height, 0, 0, g_sprite_canvas_wh, g_sprite_canvas_wh);
           })
           .catch((encodingError) => {
@@ -197,7 +200,7 @@
         });
   		}
 	  	else {
-    		ctx = el_img.getContext('2d');
+    		ctx = el_img.getContext("2d");
 	  		ctx.clearRect(0, 0, g_sprite_canvas_wh, g_sprite_canvas_wh);
   		}
   }
@@ -221,26 +224,25 @@
 		let insert_point = document.getElementById("insert_before_here");
 
 		if (responseText != "") {
-			let files = responseText.split('\n');
+			let files = responseText.split("\n");
 			for (let i in files) {
 			  // only want background image filenames
-				if (files[i] != "" && !files[i].startsWith('/images/sprites/') && files[i].indexOf('/thumbnails/') == -1 && !files[i].endsWith('/')) {
+				if (files[i] != "" && !files[i].startsWith("/images/sprites/") && files[i].indexOf("/thumbnails/") == -1 && !files[i].endsWith("/")) {
 					let filename = files[i];
-					filename = filename.slice(0, filename.lastIndexOf('\t'));
+					filename = filename.slice(0, filename.lastIndexOf("\t"));
 
 					let sprite_div = document.createElement("div");
 					sprite_div.classList.add("grid-container");
 
 					let bg_img = document.createElement("img");
 					bg_img.classList.add("grid-item-bg-img");
-					bg_img.setAttribute("id", 'bg_img_'+filename);
+					bg_img.setAttribute("id", "bg_img_"+filename);
 					bg_img.setAttribute("data-filename", filename);
 					let imgsrc = filename;
 					if (imgsrc.endsWith(".gif")) {
             basename_gif = filename.split("/").pop();
             basename_png = basename_gif.replace(".gif", ".png");
             filename_thumb = filename.replace(basename_gif, "thumbnails/"+basename_png);
-            //if (files.indexOf(filename_thumb) > -1) {
             if (files.findIndex(entry => entry.includes(filename_thumb)) > -1) {
               imgsrc = filename_thumb;
             }
@@ -253,8 +255,7 @@
 					bg_img.style.height = g_bg_canvas_h + "px";
 					sprite_div.appendChild(bg_img);
 
-					let label
-					label = document.createElement("label");
+					let label = document.createElement("label");
 					label.innerHTML = ""; // thumbnail
 					sprite_div.appendChild(label);
 					
@@ -299,7 +300,7 @@
 					  // sprite thumbnail
             // ****************
 						let img = document.createElement("canvas");
-						img.setAttribute("id", 'sprite_img_'+onum+'_'+filename);
+						img.setAttribute("id", "sprite_img_"+onum+"_"+filename);
 						img.width = g_sprite_canvas_wh;
 						img.style.width = g_sprite_canvas_wh + "px";
 						img.height = g_sprite_canvas_wh;
@@ -310,8 +311,8 @@
             // sprite chooser
             // **************
 						let sprite_select = document.createElement("select");
-						sprite_select.setAttribute("id", 'sprite_select_'+onum+'_'+filename);
-						sprite_select.setAttribute("name", 'sprite_select_'+onum+'_'+filename);
+						sprite_select.setAttribute("id", "sprite_select_"+onum+"_"+filename);
+						sprite_select.setAttribute("name", "sprite_select_"+onum+"_"+filename);
 						sprite_select.setAttribute("form", "sprites_form");
 						sprite_select.setAttribute("data-filename", filename);
 						sprite_select.setAttribute("data-index", onum);
@@ -323,7 +324,7 @@
 						for (let j = 0; j < g_sprites.length; j++) {
 							option = document.createElement("option");
 							option.value = g_sprites[j]; 
-							option.text = g_sprites[j].replace('/images/sprites/', '');
+							option.text = g_sprites[j].replace("/images/sprites/", "");
 							sprite_select.add(option);
 						}
 
@@ -339,8 +340,8 @@
 						sprite_cnt.setAttribute("min", 0);
 						sprite_cnt.setAttribute("max", 50);
 						sprite_cnt.setAttribute("value", 0);
-						sprite_cnt.setAttribute("id", 'sprite_count_'+onum+'_'+filename);
-						sprite_cnt.setAttribute("name", 'sprite_count_'+onum+'_'+filename);
+						sprite_cnt.setAttribute("id", "sprite_count_"+onum+"_"+filename);
+						sprite_cnt.setAttribute("name", "sprite_count_"+onum+"_"+filename);
 						sprite_cnt.setAttribute("form", "sprites_form");
 						sprite_cnt.setAttribute("onchange", "update_ui(this)");
 
@@ -585,8 +586,8 @@
 					  // wind category chooser
             // *********************
 						let wind_select = document.createElement("select");
-						wind_select.setAttribute("id", 'sprite_wind_'+onum+'_'+filename);
-						wind_select.setAttribute("name", 'sprite_wind_'+onum+'_'+filename);
+						wind_select.setAttribute("id", "sprite_wind_"+onum+"_"+filename);
+						wind_select.setAttribute("name", "sprite_wind_"+onum+"_"+filename);
 						wind_select.setAttribute("form", "sprites_form");
 						wind_select.setAttribute("onchange", "update_ui(this)");
 						
@@ -610,8 +611,8 @@
 					  // how the sprite is handled when it reaches the screen edge
             // *********************************************************
 						let edge_effect_select = document.createElement("select");
-						edge_effect_select.setAttribute("id", 'sprite_edge_effect_'+onum+'_'+filename);
-						edge_effect_select.setAttribute("name", 'sprite_edge_effect_'+onum+'_'+filename);
+						edge_effect_select.setAttribute("id", "sprite_edge_effect_"+onum+"_"+filename);
+						edge_effect_select.setAttribute("name", "sprite_edge_effect_"+onum+"_"+filename);
 						edge_effect_select.setAttribute("form", "sprites_form");
 						edge_effect_select.setAttribute("onchange", "update_ui(this)");
 						
@@ -785,12 +786,12 @@
 
 	function create_sprite_files_list(responseText) {
 		if (responseText != "") {
-			let files = responseText.split('\n');
+			let files = responseText.split("\n");
 			for (let i in files) {
 			  // only want sprite filenames
-				if (files[i] != "" && files[i].startsWith('/images/sprites/') && !files[i].endsWith('/')) {
+				if (files[i] != "" && files[i].startsWith("/images/sprites/") && !files[i].endsWith("/")) {
 					let fnfs = files[i]; // filename and filesize separated by tab character
-					let filename = fnfs.slice(0, fnfs.lastIndexOf('\t'));
+					let filename = fnfs.slice(0, fnfs.lastIndexOf("\t"));
 					if (filename.toLowerCase().endsWith(".bmp")) {
 						g_sprites.push(filename);
 					}
@@ -825,46 +826,46 @@
 			let el_wind = el_winds[i];
 			let el_edge_effect = el_edge_effects[i];
 			
-			let filename = el_sprite.getAttribute('data-filename');
-			let index = parseInt(el_sprite.getAttribute('data-index'));
+			let filename = el_sprite.getAttribute("data-filename");
+			let index = parseInt(el_sprite.getAttribute("data-index"));
 	
 			if (filename in sprite_settings) {
 				for (let j = 0; j < el_sprite.options.length; j++) {
 					// cannot directly set value because we cannot be sure the sprite file assigned in the json still exists in /sprites/
 					// so loop through all of the options and set the sprite and attributes if the file in the json matches an existing sprite file option
-					if (el_sprite.options[j].value === sprite_settings[filename][index]['file']) {
+					if (el_sprite.options[j].value === sprite_settings[filename][index]["file"]) {
 						el_sprite.selectedIndex = j;
-						//if (sprite_settings[filename][index]['file'].startsWith("/sprites")) {
-						if (sprite_settings[filename][index]['file'].toLowerCase().endsWith(".bmp")) {
+						//if (sprite_settings[filename][index]["file"].startsWith("/sprites")) {
+						if (sprite_settings[filename][index]["file"].toLowerCase().endsWith(".bmp")) {
 							//load_sprite(el_sprite);
 							el_sprite_queue.push(el_sprite);
 						}
-						value = sprite_settings[filename][index]['count'];
-						if (typeof value !== 'undefined') {
+						value = sprite_settings[filename][index]["count"];
+						if (typeof value !== "undefined") {
 							el_count.value = parseInt(value);
 						}
-            value = sprite_settings[filename][index]['linear_direction'];
-						if (typeof value !== 'undefined') {
+            value = sprite_settings[filename][index]["linear_direction"];
+						if (typeof value !== "undefined") {
 							el_lin_direction.value = parseInt(value);
 							update_ui(el_lin_direction);
 						}
-						value = parseInt(sprite_settings[filename][index]['linear_speed']);
-						if (typeof value !== 'undefined') {
+						value = parseInt(sprite_settings[filename][index]["linear_speed"]);
+						if (typeof value !== "undefined") {
 							el_lin_speed.value = parseInt(value);
 							update_ui(el_lin_speed);
 						}
-            value = sprite_settings[filename][index]['spin_direction'];
-						if (typeof value !== 'undefined') {
+            value = sprite_settings[filename][index]["spin_direction"];
+						if (typeof value !== "undefined") {
 							el_spin_direction.value = parseInt(value);
 							update_ui(el_spin_direction);
 						}
-						value = parseInt(sprite_settings[filename][index]['spin_speed']);
-						if (typeof value !== 'undefined') {
+						value = parseInt(sprite_settings[filename][index]["spin_speed"]);
+						if (typeof value !== "undefined") {
 							el_spin_speed.value = parseInt(value);
 							update_ui(el_spin_speed);
 						}
-						value = sprite_settings[filename][index]['jiggle'];
-						if (typeof value !== 'undefined') {
+						value = sprite_settings[filename][index]["jiggle"];
+						if (typeof value !== "undefined") {
 					    if (value == "1") {
 							  el_jiggle.checked = true;
 							}
@@ -872,13 +873,13 @@
 							  el_jiggle.checked = false;
 							}
 						}
-						value = sprite_settings[filename][index]['wind'];
-						if (typeof value !== 'undefined') {
+						value = sprite_settings[filename][index]["wind"];
+						if (typeof value !== "undefined") {
 							el_wind.value = value;
 							update_ui(el_wind);
 						}
-						value = sprite_settings[filename][index]['edge_effect'];
-						if (typeof value !== 'undefined') {
+						value = sprite_settings[filename][index]["edge_effect"];
+						if (typeof value !== "undefined") {
 							el_edge_effect.value = value;
 							update_ui(el_edge_effect);
 						}
@@ -893,11 +894,11 @@
 
 	function upload_status(json) {
 		if (json["upload_status"] == 0) {
-			//console.log('File uploaded successfully.');
+			//console.log("File uploaded successfully.");
 			document.getElementById("btn_upload_settings").textContent = "Update Successful!";
 		}
 		else {
-			//console.log('File upload failed.');
+			//console.log("File upload failed.");
 			document.getElementById("btn_upload_settings").textContent = "Update Failed :(";
 		}
 	}
@@ -926,7 +927,10 @@
 			let el_wind = el_winds[i];
 			let el_edge_effect = el_edge_effects[i];
 	
-			let filename = el_sprite.getAttribute('data-filename');
+			let filename = el_sprite.getAttribute("data-filename");
+			if (filename.startsWith("data:")) {
+			  filename = "ALL";
+			}
 			let count = el_count.value; // do not use parseInt() because keeping everything as a string makes it easier to parse the JSON file
 			let sprite_fname = el_sprite.options[el_sprite.selectedIndex].value;
 			let linear_direction = el_lin_direction.options[el_lin_direction.selectedIndex].value;
@@ -947,7 +951,7 @@
 			if (edge_effect == "bounce") {
 			  wind = "0"
 			}
-			console.log(`spin speed: ${spin_speed}`);
+
 			// everything in the JSON file must be a string for microcontroller code to work properly!
 			sprites_dict[filename].push({"file": sprite_fname, "count": count, "linear_direction": linear_direction, "linear_speed": linear_speed, "spin_direction": spin_direction, "spin_speed": spin_speed, "jiggle": jiggle, "wind": wind, "edge_effect": edge_effect});
 		}
@@ -958,7 +962,7 @@
 		const blob = new Blob([JSON.stringify(sprites_dict)], { type: "application/json" });
 		form_data.append("upload", blob, "/sprite_settings.json");
 		
-		fetch(base_url+'/upload', {method:"POST", body:form_data})
+		fetch(base_url+"/upload", {method:"POST", body:form_data})
 			.then(response => response.json())
 			.then(data => upload_status(data));
 	}
@@ -966,14 +970,42 @@
 	
 	async function load_page() {
 		const [data1, data2] = await Promise.all([
-			fetch(base_url+'/file_list'),
-		  fetch(base_url+'/sprite_settings.json')
+			fetch(base_url+"/file_list"),
+		  fetch(base_url+"/sprite_settings.json")
 		]);		
 	
-		const file_list = await data1.text();
+		let file_list = await data1.text();
 		create_sprite_files_list(file_list);
-		create_sprite_settings_ui(file_list);
 		
+	  const font_family = "Arial";
+	  //const font_size = Math.round(0.80*g_bg_canvas_w) + "px";
+	  const font_size = "64px";
+	  const ratio = window.devicePixelRatio;
+		let canvas = document.createElement("canvas");
+  	canvas.style.width = g_bg_canvas_w + "px";
+	  canvas.style.height = g_bg_canvas_h + "px";
+  	canvas.width = g_bg_canvas_w;
+	  canvas.height = g_bg_canvas_h;
+	  canvas.getContext("2d").scale(ratio, ratio);
+		
+		let ctx = canvas.getContext('2d');
+		ctx.fillStyle = "#000000";
+		//ctx.fillStyle = "#FF0000";
+		ctx.fillRect(0, 0, g_bg_canvas_w, g_bg_canvas_h);
+		ctx.font = font_size +" "+ font_family;
+		ctx.textAlign = "center";
+		ctx.textBaseline = "middle";
+		ctx.fillStyle = "#FFFFFF"; // font color
+		ctx.fillText("ALL", Math.round(g_bg_canvas_w/2.0), Math.round(g_bg_canvas_h/2.0)+Math.round(g_bg_canvas_h/20)); //fudge the y pos of center a little to get more even padding top and bottom
+		
+    ctx.canvas.toDataURL("image/png");
+    file_list = ctx.canvas.toDataURL("image/png")+"\n" + file_list;
+		//let insert_point = document.getElementById("insert_before_here");
+		//let container = document.getElementById("flex_container");
+  	//container.insertBefore(canvas, insert_point);
+
+		create_sprite_settings_ui(file_list);
+
 		const sprite_settings = await data2.json();
 		//let sprite_settings = await data2.text();
 		//console.log(sprite_settings);
