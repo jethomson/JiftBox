@@ -362,14 +362,9 @@ void handle_overlay(std::string bgimgname, TFT_eSprite* background) {
     static string prev_bgimgname;
     static vector<Overlay> overlays;
 
-    size_t match_start = 0;
-    size_t match_end = 0;
-    if ((match_start = sprite_settings_JSON.find("ALL")) != string::npos) {
-      if ((match_end = sprite_settings_JSON.find("}]", match_start)) != string::npos) {
-        bgimgname = "ALL";
-      }
+    if (sprite_settings_JSON.find("\"ALL\":{\"enabled\":\"true\"") != string::npos) {
+      bgimgname = "ALL";
     }
-  
     if(prev_bgimgname != bgimgname) {
     // this section only runs when the next image is loaded
       prev_bgimgname = bgimgname;
@@ -384,40 +379,41 @@ void handle_overlay(std::string bgimgname, TFT_eSprite* background) {
       sprite_settings.wind_speeds.clear();
       sprite_settings.edge_effects.clear();
       overlays.clear();
-
       // the primary key for sprite_settings_JSON is the filename of the background image
       // settings_substring contains the filename of the sprite and the sprite's settings for a particular background image filename
+      // easier to look for primary key and enabled property at the same time
+      string phrase = "\"" + bgimgname +"\":{\"enabled\":\"true\"";
       size_t match_start = 0;
       size_t match_end = 0;
+      size_t pos = 0;
       string settings_substring;
-      if ((match_start = sprite_settings_JSON.find(bgimgname)) != string::npos) {
-        if ((match_end = sprite_settings_JSON.find("}]", match_start)) != string::npos) {
-          settings_substring = sprite_settings_JSON.substr(match_start, match_end-match_start+2); // use +2 to include }]
-  
-          size_t pos = 0;
-          uint8_t i = 0;
-          while((pos = simple_JSON_parse(settings_substring, "file", pos, sprite_settings.filenames)) != string::npos);
-          pos = 0;
-          while((pos = simple_JSON_parse(settings_substring, "count", pos, sprite_settings.num_instances)) != string::npos);
-          pos = 0;
-          while((pos = simple_JSON_parse(settings_substring, "linear_direction", pos, sprite_settings.lin_directions)) != string::npos);
-          pos = 0;
-          while((pos = simple_JSON_parse(settings_substring, "linear_speed", pos, sprite_settings.lin_speeds)) != string::npos);
-          pos = 0;
-          while((pos = simple_JSON_parse(settings_substring, "spin_direction", pos, sprite_settings.spin_directions)) != string::npos);
-          pos = 0;
-          while((pos = simple_JSON_parse(settings_substring, "spin_speed", pos, sprite_settings.spin_speeds)) != string::npos);
-          pos = 0;
-          while((pos = simple_JSON_parse(settings_substring, "jiggle", pos, sprite_settings.jiggles)) != string::npos);
-          pos = 0;
-          while((pos = simple_JSON_parse(settings_substring, "wind", pos, sprite_settings.wind_cats)) != string::npos);
-          pos = 0;
-          while((pos = simple_JSON_parse(settings_substring, "edge_effect", pos, sprite_settings.edge_effects)) != string::npos);
-          pos = 0;
-        }
-        else {
-          //bad format
-          return;
+      if ((match_start = sprite_settings_JSON.find(phrase)) != string::npos) { // set match_start here so we can skip any data before bgimgname
+        if ((match_start = sprite_settings_JSON.find("\"sprite_settings\":", match_start)) != string::npos) {
+          if ((match_end = sprite_settings_JSON.find("}]}", match_start)) != string::npos) {
+            settings_substring = sprite_settings_JSON.substr(match_start, match_end-match_start+3); // use +3 to include }]}
+            while((pos = simple_JSON_parse(settings_substring, "file", pos, sprite_settings.filenames)) != string::npos);
+            pos = 0;
+            while((pos = simple_JSON_parse(settings_substring, "count", pos, sprite_settings.num_instances)) != string::npos);
+            pos = 0;
+            while((pos = simple_JSON_parse(settings_substring, "linear_direction", pos, sprite_settings.lin_directions)) != string::npos);
+            pos = 0;
+            while((pos = simple_JSON_parse(settings_substring, "linear_speed", pos, sprite_settings.lin_speeds)) != string::npos);
+            pos = 0;
+            while((pos = simple_JSON_parse(settings_substring, "spin_direction", pos, sprite_settings.spin_directions)) != string::npos);
+            pos = 0;
+            while((pos = simple_JSON_parse(settings_substring, "spin_speed", pos, sprite_settings.spin_speeds)) != string::npos);
+            pos = 0;
+            while((pos = simple_JSON_parse(settings_substring, "jiggle", pos, sprite_settings.jiggles)) != string::npos);
+            pos = 0;
+            while((pos = simple_JSON_parse(settings_substring, "wind", pos, sprite_settings.wind_cats)) != string::npos);
+            pos = 0;
+            while((pos = simple_JSON_parse(settings_substring, "edge_effect", pos, sprite_settings.edge_effects)) != string::npos);
+            pos = 0;
+          }
+          else {
+            //bad format
+            return;
+          }
         }
       }
       else {
@@ -706,7 +702,6 @@ void handle_overlay(std::string bgimgname, TFT_eSprite* background) {
       // randomizing when the effect is triggered allows time for an overlay starting from an initial condition out of bounds to make its way inbounds
       // randomizing is also equivalent to giving the new overlay a random initial position
       if (sprite_settings.edge_effects[si] == 0 && overlays[i].outbounds_cnt >= random(0,11)) {
-        Serial.println("teleport");
         overlays[i].outbounds_cnt = 0;
         if (overlays[i].x + sprite.width() <= 0) {
           // adding a random offset to the initial position of the new overlay does not work well, because often it will flit back and forth on the outsides of the borders

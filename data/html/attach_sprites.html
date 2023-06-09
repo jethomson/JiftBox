@@ -110,7 +110,7 @@
     return new Promise((resolve, reject) => {
       const imgsrc = img.getAttribute("data-imgsrc");
 	  	let url = base_url + imgsrc;
-	  	if (imgsrc.startsWith("data:")) {
+	  	if (imgsrc.startsWith("data:image/png;")) {
 	  	  url = imgsrc;
 	  	}
 	  	img.src = url;
@@ -216,6 +216,32 @@
     }
 	}
 
+  function make_dataURLimg(filename) {
+	  const font_family = "Arial";
+	  const font_size = Math.round(0.25*g_bg_canvas_w) + "px";
+	  //const font_size = "64px";
+	  const ratio = window.devicePixelRatio;
+		let canvas = document.createElement("canvas");
+  	canvas.style.width = g_bg_canvas_w + "px";
+	  canvas.style.height = g_bg_canvas_h + "px";
+  	canvas.width = g_bg_canvas_w;
+	  canvas.height = g_bg_canvas_h;
+	  canvas.getContext("2d").scale(ratio, ratio);
+		
+		let ctx = canvas.getContext('2d');
+		ctx.fillStyle = "#000000";
+		//ctx.fillStyle = "#FF0000";
+		ctx.fillRect(0, 0, g_bg_canvas_w, g_bg_canvas_h);
+		ctx.font = font_size +" "+ font_family;
+		ctx.textAlign = "center";
+		ctx.textBaseline = "middle";
+		ctx.fillStyle = "#FFFFFF"; // font color
+		ctx.fillText("ALL", Math.round(g_bg_canvas_w/2.0), Math.round(g_bg_canvas_h/2.0)+Math.round(g_bg_canvas_h/20)); //fudge the y pos of center a little to get more even padding top and bottom
+		
+    let dataURLimg = ctx.canvas.toDataURL("image/png");
+    dataURLimg = dataURLimg.replace("image/png", "image/png;"+filename);
+    return dataURLimg;
+  }
 
 	function create_sprite_settings_ui(responseText) {
 		let maindiv = document.getElementById("maindiv");
@@ -238,8 +264,11 @@
 					bg_img.classList.add("grid-item-bg-img");
 					bg_img.setAttribute("id", "bg_img_"+filename);
 					bg_img.setAttribute("data-filename", filename);
-					let imgsrc = filename;
-					if (imgsrc.endsWith(".gif")) {
+					// because we want to load thumbnails in place of GIFs, and generate data URL images on the fly we need another attribute besides data-filename
+					// data-imgsrc holds the reference to the image we want to load on this page
+					// data-filename is the name of the image* that is loaded in microcontroller while in display mode. *where ALL is a special name indicating sprites settings will be applied to all images. 
+          let imgsrc = filename;
+					if (filename.endsWith(".gif")) {
             basename_gif = filename.split("/").pop();
             basename_png = basename_gif.replace(".gif", ".png");
             filename_thumb = filename.replace(basename_gif, "thumbnails/"+basename_png);
@@ -247,8 +276,11 @@
               imgsrc = filename_thumb;
             }
 					}
+					else if (filename.startsWith("dataURLimg=")) {
+            imgsrc = make_dataURLimg(filename);
+					}
 					bg_img.setAttribute("data-imgsrc", imgsrc);
-					bg_img.setAttribute("alt", `Loading image ${imgsrc}. GIFs take a while to load.`);
+					bg_img.setAttribute("alt", "Loading image. GIFs take a while to load.");
 					bg_img.width = g_bg_canvas_w;
 					bg_img.style.width = g_bg_canvas_w + "px";
 					bg_img.height = g_bg_canvas_h;
@@ -800,7 +832,7 @@
 		}
 	}
 	
-	function load_sprite_settings(sprite_settings) {
+	function load_sprite_settings(json) {
 		let el_imgs = document.querySelectorAll('[id^="sprite_img_"]');
 		let el_sprites = document.querySelectorAll('[id^="sprite_select_"]');
 		let el_counts = document.querySelectorAll('[id^="sprite_count_"]');
@@ -827,44 +859,50 @@
 			let el_edge_effect = el_edge_effects[i];
 			
 			let filename = el_sprite.getAttribute("data-filename");
+			if (filename.startsWith("dataURLimg=")) {
+			  filename = filename.replace("dataURLimg=", "");
+			}
+
 			let index = parseInt(el_sprite.getAttribute("data-index"));
+
 	
-			if (filename in sprite_settings) {
+			if (filename in json) {
 				for (let j = 0; j < el_sprite.options.length; j++) {
 					// cannot directly set value because we cannot be sure the sprite file assigned in the json still exists in /sprites/
 					// so loop through all of the options and set the sprite and attributes if the file in the json matches an existing sprite file option
-					if (el_sprite.options[j].value === sprite_settings[filename][index]["file"]) {
+			    let sprite_settings = json[filename]["sprite_settings"];
+					if (el_sprite.options[j].value === sprite_settings[index]["file"]) {
 						el_sprite.selectedIndex = j;
-						//if (sprite_settings[filename][index]["file"].startsWith("/sprites")) {
-						if (sprite_settings[filename][index]["file"].toLowerCase().endsWith(".bmp")) {
+						//if (sprite_settings[index]["file"].startsWith("/sprites")) {
+						if (sprite_settings[index]["file"].toLowerCase().endsWith(".bmp")) {
 							//load_sprite(el_sprite);
 							el_sprite_queue.push(el_sprite);
 						}
-						value = sprite_settings[filename][index]["count"];
+						value = sprite_settings[index]["count"];
 						if (typeof value !== "undefined") {
 							el_count.value = parseInt(value);
 						}
-            value = sprite_settings[filename][index]["linear_direction"];
+            value = sprite_settings[index]["linear_direction"];
 						if (typeof value !== "undefined") {
 							el_lin_direction.value = parseInt(value);
 							update_ui(el_lin_direction);
 						}
-						value = parseInt(sprite_settings[filename][index]["linear_speed"]);
+						value = parseInt(sprite_settings[index]["linear_speed"]);
 						if (typeof value !== "undefined") {
 							el_lin_speed.value = parseInt(value);
 							update_ui(el_lin_speed);
 						}
-            value = sprite_settings[filename][index]["spin_direction"];
+            value = sprite_settings[index]["spin_direction"];
 						if (typeof value !== "undefined") {
 							el_spin_direction.value = parseInt(value);
 							update_ui(el_spin_direction);
 						}
-						value = parseInt(sprite_settings[filename][index]["spin_speed"]);
+						value = parseInt(sprite_settings[index]["spin_speed"]);
 						if (typeof value !== "undefined") {
 							el_spin_speed.value = parseInt(value);
 							update_ui(el_spin_speed);
 						}
-						value = sprite_settings[filename][index]["jiggle"];
+						value = sprite_settings[index]["jiggle"];
 						if (typeof value !== "undefined") {
 					    if (value == "1") {
 							  el_jiggle.checked = true;
@@ -873,12 +911,12 @@
 							  el_jiggle.checked = false;
 							}
 						}
-						value = sprite_settings[filename][index]["wind"];
+						value = sprite_settings[index]["wind"];
 						if (typeof value !== "undefined") {
 							el_wind.value = value;
 							update_ui(el_wind);
 						}
-						value = sprite_settings[filename][index]["edge_effect"];
+						value = sprite_settings[index]["edge_effect"];
 						if (typeof value !== "undefined") {
 							el_edge_effect.value = value;
 							update_ui(el_edge_effect);
@@ -928,8 +966,8 @@
 			let el_edge_effect = el_edge_effects[i];
 	
 			let filename = el_sprite.getAttribute("data-filename");
-			if (filename.startsWith("data:")) {
-			  filename = "ALL";
+			if (filename.startsWith("dataURLimg=")) {
+			  filename = filename.replace("dataURLimg=", "");
 			}
 			let count = el_count.value; // do not use parseInt() because keeping everything as a string makes it easier to parse the JSON file
 			let sprite_fname = el_sprite.options[el_sprite.selectedIndex].value;
@@ -943,7 +981,10 @@
 			let wind = el_wind.options[el_wind.selectedIndex].value;
 			let edge_effect = el_edge_effect.options[el_edge_effect.selectedIndex].value;
 			if (!(filename in sprites_dict)) {
-				sprites_dict[filename] = [];
+				sprites_dict[filename] = {"enabled": "true", "sprite_settings": []};
+				if (filename == "ALL") { // debug test
+				  sprites_dict[filename] = {"enabled": "false", "sprite_settings": []};
+				}
 			}
 			if (linear_speed == "0") {
 			  linear_direction = "0";
@@ -953,7 +994,7 @@
 			}
 
 			// everything in the JSON file must be a string for microcontroller code to work properly!
-			sprites_dict[filename].push({"file": sprite_fname, "count": count, "linear_direction": linear_direction, "linear_speed": linear_speed, "spin_direction": spin_direction, "spin_speed": spin_speed, "jiggle": jiggle, "wind": wind, "edge_effect": edge_effect});
+			sprites_dict[filename]["sprite_settings"].push({"file": sprite_fname, "count": count, "linear_direction": linear_direction, "linear_speed": linear_speed, "spin_direction": spin_direction, "spin_speed": spin_speed, "jiggle": jiggle, "wind": wind, "edge_effect": edge_effect});
 		}
 	
 		console.log(JSON.stringify(sprites_dict));
@@ -976,30 +1017,8 @@
 	
 		let file_list = await data1.text();
 		create_sprite_files_list(file_list);
-		
-	  const font_family = "Arial";
-	  //const font_size = Math.round(0.80*g_bg_canvas_w) + "px";
-	  const font_size = "64px";
-	  const ratio = window.devicePixelRatio;
-		let canvas = document.createElement("canvas");
-  	canvas.style.width = g_bg_canvas_w + "px";
-	  canvas.style.height = g_bg_canvas_h + "px";
-  	canvas.width = g_bg_canvas_w;
-	  canvas.height = g_bg_canvas_h;
-	  canvas.getContext("2d").scale(ratio, ratio);
-		
-		let ctx = canvas.getContext('2d');
-		ctx.fillStyle = "#000000";
-		//ctx.fillStyle = "#FF0000";
-		ctx.fillRect(0, 0, g_bg_canvas_w, g_bg_canvas_h);
-		ctx.font = font_size +" "+ font_family;
-		ctx.textAlign = "center";
-		ctx.textBaseline = "middle";
-		ctx.fillStyle = "#FFFFFF"; // font color
-		ctx.fillText("ALL", Math.round(g_bg_canvas_w/2.0), Math.round(g_bg_canvas_h/2.0)+Math.round(g_bg_canvas_h/20)); //fudge the y pos of center a little to get more even padding top and bottom
-		
-    ctx.canvas.toDataURL("image/png");
-    file_list = ctx.canvas.toDataURL("image/png")+"\n" + file_list;
+
+    file_list = "dataURLimg=ALL\t0\n" + file_list;
 		//let insert_point = document.getElementById("insert_before_here");
 		//let container = document.getElementById("flex_container");
   	//container.insertBefore(canvas, insert_point);
