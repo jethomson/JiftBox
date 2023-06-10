@@ -47,7 +47,7 @@
 			<div style='text-align:center;'>Select a folder to upload.</div>
 			<br>
 			<p>
-	  	<form id="upload" method="POST" onsubmit="event.preventDefault(); upload_files()">
+		<form id="upload" method="POST" onsubmit="event.preventDefault(); upload_files()">
 				<input id='filesize' type="hidden" name="folder_upload" />
         <input id='file' type='file' name='update' webkitdirectory="" directory="" />
 				<p></p>
@@ -95,50 +95,44 @@
 		}
 	}
 
-  function convert_to_thumbnail(file, form_data) {
-    return new Promise((resolve, reject) => {
-      let filename = file.name;
-      let thumbnail_fname = filename.replace(".gif", ".png");
-      let webkitRelativePath = file.webkitRelativePath;
-      let thumbnail_path = webkitRelativePath.replace(filename, "thumbnails/"+thumbnail_fname);
+	function convert_to_thumbnail(file, form_data) {
+		return new Promise((resolve, reject) => {
+			let filename = file.name;
+			let thumbnail_fname = filename.replace(".gif", ".png");
+			let webkitRelativePath = file.webkitRelativePath;
+			let thumbnail_path = webkitRelativePath.replace(filename, "thumbnails/"+thumbnail_fname);
 
-      let canvas = document.createElement("canvas");
-      let fr = new FileReader();
-      fr.onload = () => {
-        let img = new Image();
-        img.onload = () => {
-    	    ctx = canvas.getContext('2d');
-          canvas.width = img.width;
-          canvas.height = img.height;
-          ctx.drawImage(img, 0, 0, img.width, img.height);
-          canvas.toBlob(function(blob) {
-            form_data.append("upload", blob, thumbnail_path);
-            resolve(true);
-          });
-        }
-        img.src = fr.result;
-      };
-      fr.readAsDataURL(file);
-    });
-  }
+			let canvas = document.createElement("canvas");
+			let fr = new FileReader();
+			fr.onload = () => {
+				let img = new Image();
+				img.onload = () => {
+					ctx = canvas.getContext('2d');
+					canvas.width = img.width;
+					canvas.height = img.height;
+					ctx.drawImage(img, 0, 0, img.width, img.height);
+					canvas.toBlob(function(blob) {
+					form_data.append("upload", blob, thumbnail_path);
+						resolve(true);
+					});
+				}
+				img.src = fr.result;
+			};
+			fr.readAsDataURL(file);
+		});
+	}
 
 	async function upload_files() {
-    //update_button_text(0);
+		//update_button_text(0);
 		let form_data = new FormData(document.getElementById("upload"));
 		let files = document.getElementById("file").files;
 		
-    //for (let i = 0; i < files.length; i++) {
-    //  if (files[i].name.endsWith(".gif")) {
-    //    await convert_to_thumbnail(files[i], form_data);
-    //  }
-		//}
-		
-    const promises = [...files].map(file => convert_to_thumbnail(file, form_data))
-    await Promise.all(promises)
+		const promises = [...files].map(file => convert_to_thumbnail(file, form_data))
+		await Promise.all(promises)
 
 		fetch(base_url+'/upload', {method:"POST", body:form_data})
-  		.then(response => response.json())
-			.then(data => upload_status(data));
+		.then(response => response.json())
+		.then(data => upload_status(data));
 	}
 	</script>
 

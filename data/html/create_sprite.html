@@ -392,7 +392,7 @@
 			 * @static
 			 */
 			toDataURL: function(canvas, bpp = 16, callback) {
-			
+
 				this.toArrayBuffer(canvas, bpp, function(file) {
 					var buffer = new Uint8Array(file),
 						blockSize = 1<<20,
@@ -562,7 +562,7 @@
 		image_large.src = dctx.canvas.toDataURL('image/bmp');
 
 		// setting the upload context separately produces a better image than scaling down uctx by ratio and using uctx.drawImage(dcanvas, 0, 0)
-		let factor = document.querySelector('[type=radio]:checked').value;		
+		let factor = document.querySelector('[type=radio]:checked').value;
 		ucanvas.style.width = factor * cwidth + 'px';
 		ucanvas.style.height = factor * cheight + 'px';
 		ucanvas.width = factor * cwidth;
