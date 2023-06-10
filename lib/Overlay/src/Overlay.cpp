@@ -362,7 +362,7 @@ void handle_overlay(std::string bgimgname, TFT_eSprite* background) {
     static string prev_bgimgname;
     static vector<Overlay> overlays;
 
-    if (sprite_settings_JSON.find("\"ALL\":{\"enabled\":\"true\"") != string::npos) {
+    if (sprite_settings_JSON.find("\"ALL\":{\"enabled\":\"1\"") != string::npos) {
       bgimgname = "ALL";
     }
     if(prev_bgimgname != bgimgname) {
@@ -382,7 +382,7 @@ void handle_overlay(std::string bgimgname, TFT_eSprite* background) {
       // the primary key for sprite_settings_JSON is the filename of the background image
       // settings_substring contains the filename of the sprite and the sprite's settings for a particular background image filename
       // easier to look for primary key and enabled property at the same time
-      string phrase = "\"" + bgimgname +"\":{\"enabled\":\"true\"";
+      string phrase = "\"" + bgimgname +"\":{\"enabled\":\"1\"";
       size_t match_start = 0;
       size_t match_end = 0;
       size_t pos = 0;
