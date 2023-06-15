@@ -2,7 +2,7 @@
 <html lang="en" class="">
 
 <head>
-<meta charset='utf-8'>
+<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
 	<title>Upload Folder</title>
 	<style>
@@ -42,28 +42,27 @@
 </head>
 
 <body>
-	<div style='text-align:left;display:inline-block;color:#eaeaea;min-width:340px;'>
-		<div style='text-align:center;color:#eaeaea;'>
-			<div style='text-align:center;'>Select a folder to upload.</div>
+	<div style="text-align:left;display:inline-block;color:#eaeaea;min-width:340px;">
+		<div style="text-align:center;color:#eaeaea;">
+			<div style="text-align:center;">Select a folder to upload.</div>
 			<br>
 			<p>
-		<form id="upload" method="POST" onsubmit="event.preventDefault(); upload_files()">
-				<input id='filesize' type="hidden" name="folder_upload" />
-        <input id='file' type='file' name='update' webkitdirectory="" directory="" />
+			<form id="upload" method="POST" onsubmit="event.preventDefault(); upload_files()">
+				<input type="hidden" name="folder_upload" />
+			        <input id="file" type="file" name="update" webkitdirectory="" directory="" onclick="document.getElementById('btn_upload_folders').value='Upload'"/>
 				<p></p>
-				<input id='upload_btn' type='submit' value='Upload'>
+				<input id="btn_upload_folders" type="submit" value="Upload">
 			</form>
 			</p>
 			<div id="main_button" class="grid-item-button">
 				<a href="/"><button name="">Main Menu</button></a>
 			</div>
 		</div>
-		<div id="test_insert_here">
-		</div>
 	</div>
 
 	<script type="text/javascript">
-	base_url = '';
+	fetch_complete = false;
+	base_url = "";
 	if (window.location.protocol == "file:") {
 		// makes for easier debugging.
 		// if html is loaded locally, can see the results of editing more easily.
@@ -73,25 +72,28 @@
 
 	//need to handle upload failure, timeout, etc?
 	function update_button_text(i) {
-		let text = "Uploading";
-		let j = i;
-		while(j) {
-			text = "." + text + '.';
-			j--;
+		if (!fetch_complete) {
+			let text = "Uploading";
+			let j = i;
+			while(j) {
+				text = "." + text + ".";
+				j--;
+			}
+			i = (i+1)%4;
+			document.getElementById("btn_upload_folders").value = text;
+			(function(p){setTimeout(function(){update_button_text(p)}, 750)})(i);
 		}
-		i = (i+1)%4;
-		document.getElementById('upload_btn').value = text;
-		(function(p){setTimeout(function(){update_button_text(p)}, 750)})(i);
 	}
 	
 	function upload_status(json) {
+		fetch_complete = true;
 		if (json["upload_status"] == 0) {
-			//console.log('File uploaded successfully.');
-			document.getElementById("btn_upload_settings").textContent = "Update Successful!";
+			//console.log("File uploaded successfully.");
+			document.getElementById("btn_upload_folders").value = "Upload Successful!";
 		}
 		else {
-			//console.log('File upload failed.');
-			document.getElementById("btn_upload_settings").textContent = "Update Failed :(";
+			//console.log("File upload failed.");
+			document.getElementById("btn_upload_folders").value = "Upload Failed :(";
 		}
 	}
 
@@ -107,7 +109,7 @@
 			fr.onload = () => {
 				let img = new Image();
 				img.onload = () => {
-					ctx = canvas.getContext('2d');
+					ctx = canvas.getContext("2d");
 					canvas.width = img.width;
 					canvas.height = img.height;
 					ctx.drawImage(img, 0, 0, img.width, img.height);
@@ -123,16 +125,16 @@
 	}
 
 	async function upload_files() {
-		//update_button_text(0);
+		update_button_text(0);
 		let form_data = new FormData(document.getElementById("upload"));
 		let files = document.getElementById("file").files;
 		
 		const promises = [...files].map(file => convert_to_thumbnail(file, form_data))
 		await Promise.all(promises)
 
-		fetch(base_url+'/upload', {method:"POST", body:form_data})
-		.then(response => response.json())
-		.then(data => upload_status(data));
+		fetch(base_url+"/upload", {method:"POST", body:form_data})
+			.then(response => response.json())
+			.then(data => upload_status(data));
 	}
 	</script>
 
