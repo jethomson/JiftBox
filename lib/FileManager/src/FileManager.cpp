@@ -5,13 +5,6 @@
 //
 // multipart upload??
 //
-// delete folder
-//
-// delete everything
-//
-// move index.html code into program so can wipe LittleFS and not delete index.html
-//
-// add AP code and code to enter SSID and password and mdns name
 //
 // minimize index.html and use gzip to save space?
 //#define index_html_gz_len 726
@@ -165,7 +158,7 @@ void create_dirs(String path) {
 
 String file_list_tmp;
 String file_list;
-// NOTE: an empty folder will not be added when building a littlefs image.
+// NOTE: An empty folder will not be added when building a littlefs image.
 // Empty folders will not be created when uploaded either.
 void list_files(File dir, String parent) {
   String path = parent;
@@ -386,11 +379,11 @@ void web_server_initiate(void) {
 
   if (WiFi.getMode() == WIFI_STA) {
     web_server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-      //request->send(LittleFS, "/html/index.html");
       request->send(LittleFS, "/html/index.html", String(), false, processor);
 
+      // for reference: alternate methods of sending a webpage
+      //request->send(LittleFS, "/html/index.html");
       //request->send_P(200, "text/html", index_html);
-
       //AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", min_index_html_gz, min_index_html_gz_len);
       //response->addHeader("Content-Encoding", "gzip");
       //request->send(response);
@@ -401,8 +394,6 @@ void web_server_initiate(void) {
     });
 
     web_server.on("/create_sprite.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-      //String sprite_url = "/html/sprite.html?display_width=";
-      //sprite_url + String(width) + "&display_height=" + String(height);
       request->send(LittleFS, "/html/create_sprite.html", String(), false, processor);
     });
 
@@ -425,58 +416,6 @@ void web_server_initiate(void) {
     web_server.on("/sprite_settings.json", HTTP_GET, [](AsyncWebServerRequest *request) {
       request->send(LittleFS, "/sprite_settings.json");
     });
-
-
-
-   
-
-
-    web_server.on("/post_test", HTTP_POST, [](AsyncWebServerRequest *request) {
-      //List all parameters
-      int params = request->params();
-      for(int i=0;i<params;i++){
-        AsyncWebParameter* p = request->getParam(i);
-        if(p->isFile()){ //p->isPost() is also true
-          Serial.printf("FILE[%s]: %s, size: %u\n", p->name().c_str(), p->value().c_str(), p->size());
-        } else if(p->isPost()){
-          Serial.printf("POST[%s]: %s\n", p->name().c_str(), p->value().c_str());
-        } else {
-          Serial.printf("GET[%s]: %s\n", p->name().c_str(), p->value().c_str());
-        }
-      }
-
-      //Check if GET parameter exists
-      if(request->hasParam("download"))
-        AsyncWebParameter* p = request->getParam("download");
-
-      //Check if POST (but not File) parameter exists
-      if(request->hasParam("download", true))
-        AsyncWebParameter* p = request->getParam("download", true);
-
-      //Check if FILE was uploaded
-      if(request->hasParam("download", true, true))
-        AsyncWebParameter* p = request->getParam("download", true, true);
-
-      //List all parameters (Compatibility)
-      int args = request->args();
-      for(int i=0;i<args;i++){
-        Serial.printf("ARG[%s]: %s\n", request->argName(i).c_str(), request->arg(i).c_str());
-      }
-
-      //Check if parameter exists (Compatibility)
-      if(request->hasArg("download"))
-        String arg = request->arg("download");
-
-      //request->send(200, "text/plain", "POST received");
-    });
-
-
-
-
-    //AsyncCallbackWebHandler& on(const char* uri, WebRequestMethodComposite method, ArRequestHandlerFunction onRequest, ArUploadHandlerFunction onUpload);
-    //web_server.on("/folder_upload", HTTP_POST, [](AsyncWebServerRequest *request) {
-    //  request->redirect("/upload.html");
-    //}, handle_folder_upload);
 
     //AsyncCallbackWebHandler& on(const char* uri, WebRequestMethodComposite method, ArRequestHandlerFunction onRequest, ArUploadHandlerFunction onUpload);
     web_server.on("/upload", HTTP_POST, [](AsyncWebServerRequest *request) {
@@ -506,15 +445,6 @@ void web_server_initiate(void) {
         }
       }
 
-      // what uses args()? not sure if will need this in the future.
-      /*
-      //List all parameters (Compatibility)
-      int args = request->args();
-      for(int i=0;i<args;i++){
-        DEBUG_PRINTF("ARG[%s]: %s\n", request->argName(i).c_str(), request->arg(i).c_str());
-      }
-      */
-
       request->redirect("/remove.html");
     });
 
@@ -539,14 +469,6 @@ void web_server_initiate(void) {
 
   web_server.on("/savenetinfo", HTTP_POST, [](AsyncWebServerRequest *request) {
     preferences.begin("netinfo", false);
-
-    //int params = request->params();
-    //for(int i=0; i < params; i++){
-    //  AsyncWebParameter* p = request->getParam(i);
-    //  if(p->isPost()){
-    //    DEBUG_PRINTF("POST[%s]: %s\n", p->name().c_str(), p->value().c_str());
-    //  }
-    //}
 
     if(request->hasParam("ssid", true)) {
       AsyncWebParameter* p = request->getParam("ssid", true);
