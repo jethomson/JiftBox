@@ -7,13 +7,18 @@
 	<title>Upload Folder</title>
 	<style>
 	body {
+		color: #eaeaea;
 		text-align: center;
 		font-family: verdana, sans-serif;
 		background: #000000;
 	}
+	#container {
+		display: inline-block;
+		min-width:340px;
+	}
 
 	div {
-		padding: 5px;
+		text-align: center;
 		font-size: 1rem;
 	}
 	
@@ -42,21 +47,19 @@
 </head>
 
 <body>
-	<div style="text-align:left;display:inline-block;color:#eaeaea;min-width:340px;">
-		<div style="text-align:center;color:#eaeaea;">
-			<div style="text-align:center;">Select a folder to upload.</div>
-			<br>
-			<p>
-			<form id="upload" method="POST" onsubmit="event.preventDefault(); upload_files()">
-				<input type="hidden" name="folder_upload" />
-			        <input id="file" type="file" name="update" webkitdirectory="" directory="" onclick="document.getElementById('btn_upload_folders').value='Upload'"/>
-				<p></p>
-				<input id="btn_upload_folders" type="submit" value="Upload">
-			</form>
-			</p>
-			<div id="main_button" class="grid-item-button">
-				<a href="/"><button name="">Main Menu</button></a>
-			</div>
+	<div id="container">
+		<div>Select a folder to upload.</div>
+		<br>
+		<p>
+		<form id="upload" method="POST" onsubmit="event.preventDefault(); upload_files()">
+			<input type="hidden" name="folder_upload" />
+		        <input id="file" type="file" name="update" webkitdirectory="" directory="" onclick="document.getElementById('btn_upload_folders').value='Upload'"/>
+			<p></p>
+			<input id="btn_upload_folders" type="submit" value="Upload">
+		</form>
+		</p>
+		<div id="main_button">
+			<a href="/"><button name="">Main Menu</button></a>
 		</div>
 	</div>
 
