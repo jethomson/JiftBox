@@ -1,8 +1,9 @@
 <!DOCTYPE html>
-<html lang="en" class="">
+<html class="" lang="en">
 <head>
-	<meta charset='utf-8'>
-	<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+	<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
 	<title>Remove Files</title>
 	<style>
 	
@@ -19,43 +20,27 @@
 	
 	.grid-container {
 		display: grid;
-		grid-template-columns: auto auto;
-		grid-row-gap: 5px;
 		width: 95vw;
 		/*height: 85vh;*/
 		max-width: 600px;
 		max-height: 800px;
 		align-items: center;
-		justify-content: center;
 		margin: 0 auto;
 	}
-	.grid-item-form {
-		display: grid;
-		align-items: center;
-		justify-content: center;
-	}
-	.grid-item-left {
-		width: 100%;
-		display: inline-flex; /*prevent div from being slightly larger on the bottom than the switch */
-		/*background: red;*/
-	}
-	.grid-item-right {
-		/*font-size: 2.3rem;
-		font-weight:bold;*/
+	.grid-checkbox-row {
 		color: white;
 		text-align: left;
 		width: 100%;
+		display: block;
 		white-space: nowrap;
 		/*background: red;*/
 	}
 	.grid-item-button {
-		grid-column: 1 / span 2;
-		font-weight:bold;
+		font-weight: bold;
 		color: white;
 		text-align: center;
 		width: 100%;
 		align-items: center;
-		justify-content: center;
 	}
 	.grid-item:active {
 		background: #0e70a4;
@@ -63,7 +48,7 @@
 	.span-regular-file {
 		padding-left: 1em;
 	}
-	
+
 	button {
 		border: 0;
 		border-radius: 0.3rem;
@@ -75,175 +60,92 @@
 		-webkit-transition-duration: 0.4s;
 		transition-duration: 0.4s;
 		cursor: pointer;
+		margin: 5px 0px;
 	}
 	
 	button:hover {
 		background: #0e70a4;
 	}
-	
-	.bred {
-		background: #d43535;
-	}
-	
-	.bred:hover {
-		background: #931f1f;
-	}
-	
-	.bgrn {
-		background: #47c266;
-	}
-	
-	.bgrn:hover {
-		background: #5aaf6f;
-	}
-
-	a:link {
-		color: inherit;
-		text-decoration: none;
-	}
-
-	a:visited {
-		color: inherit;
-		text-decoration: none;
-	}
-
-	a:hover {
-		color: yellow;
-		text-decoration: none;
-	}
-
-	a:active {
-		color: inherit;
-		text-decoration: none;
-	}
-	
-
-
 	</style>
 </head>
 <body>
 
 
 	<h3>Deleting files takes awhile. Reload this page to see an updated file list.</h3>
-	<div id="maindiv" class="grid-container" style="visibility: hidden">
-		<form class="grid-item-form" id="delete_form" method="POST" action="delete">
-		<div id="insert_file_list_before_here" style="display: none"></div>
+	<form id="delete_form" method="POST" action="delete"></form>
+	<div id="container" class="grid-container">
+		<div id="checkbox_div"></div>
 
 		<div class="grid-item-button">
-			<!--<input id='delete_btn' type='submit' value='Delete Files(s)'>-->
-			<button id='delete_btn' type='submit'>Queue File(s) For Deletion</button>
+			<button id="delete_btn" type="submit" form="delete_form">Queue File(s) For Deletion</button>
 		</div>
-		</form>
 		
 		<div id="main_button" class="grid-item-button">
-			<a href="/"><button name="">Main Menu</button></a>
+			<a href="http://jiftbox.local/"><button name="">Main Menu</button></a>
 		</div>
-
-		<!--div class="grid-item-button" style="display: none"-->
-		<!--
-		<div class="grid-item-button">
-			<form action="select_bin" method="get"><button name="">Select Bin File</button></form>
-		</div>
-		<div class="grid-item-button">
-			<form action="restart" method="get" onsubmit="return confirm(&quot;Confirm Restart&quot;);"><button name="" class="button bred">Restart</button></form>
-		</div>
-		-->
 	</div>
 
 
 	<script type="text/javascript">
+	base_url = "";
+	if (window.location.protocol == "file:") {
+		// makes for easier debugging.
+		// if html is loaded locally, can see the results of editing more easily.
+		// otherwise every change to html would require uploading new version to microcontroller.
+		base_url = "http://jiftbox.local";
+	}
 
 	function insert_file_list(responseText) {
-		var maindiv = document.getElementById("maindiv");
-		var form = document.getElementById("delete_form");
-		
-		//var insert_point = document.getElementById("insert_file_list_here");
-		//var content = document.createTextNode(responseText);
-		//console.log(responseText);
-		//insert_point.appendChild(content);
-		
-		var insert_point = document.getElementById("insert_file_list_before_here");
-		
-	
+		let container = document.getElementById("container");
+		let form = document.getElementById("delete_form");
+		let insert_point = document.getElementById("insert_file_list_before_here");
+
+		let checkbox_div = document.getElementById("checkbox_div");
 		if (responseText != "") {
-			var files = responseText.split('\n');
+			var files = responseText.split("\n");
 			for (var i in files) {
 				if (files[i] != "") {
-					var switch_div = document.createElement("div");
-					var switch_input = document.createElement("input");
-				
-					switch_div.classList.add("grid-item-left");
-					//switch_input.classList.add("smart_checkbox");
-					//switch_input.classList.add("switch");
-					switch_input.setAttribute("type", "checkbox");
-					switch_input.setAttribute("id", files[i]);
-					switch_input.setAttribute("name", files[i]);
+					let row = document.createElement("div");
+					row.classList.add("grid-checkbox-row");
+					let checkbox_input = document.createElement("input");
+					checkbox_input.setAttribute("type", "checkbox");
+					checkbox_input.setAttribute("id", files[i]);
+					checkbox_input.setAttribute("name", files[i]);
+					checkbox_input.setAttribute("form", "delete_form");
 	
-					switch_div.appendChild(switch_input);
+					row.appendChild(checkbox_input);
 	
-					var label_div = document.createElement("div");
-					var label_span = document.createElement("span");
+					let label_span = document.createElement("span");
 	
-					var label_text = files[i];
-					if (!files[i].endsWith('/')) {
-						//label_text = '├──'+label_text;
-						//label_text = '\\___'+label_text;
+					let label_text = files[i];
+					if (label_text.indexOf("\t") > -1) {
 						label_span.classList.add("span-regular-file");
+						//label_text = "├──"+label_text;
+						//label_text = "\\___"+label_text;
+						label_text = label_text.replace("\t", "\t(");
+						label_text += " bytes)";
 					}
 				
-					label_div.classList.add("grid-item-right");
-					//label_span.setAttribute("text", label_text);
-					//label_span.setAttribute("id", "smart_text_"+devices[d].text);
-				
-	
 					label_span.appendChild(document.createTextNode(label_text));
-					label_div.appendChild(label_span);
-				
-					form.insertBefore(switch_div, insert_point);
-					form.insertBefore(label_div, insert_point);
+					row.appendChild(label_span);
+					checkbox_div.appendChild(row);
 				}
 			}
 		}
 		else {
-			var not_found_div = document.createElement("div");
+			let not_found_div = document.createElement("div");
 			not_found_div.innerText = "No files found.";
 			not_found_div.style = "color: white; text-align: center; width: 100%;"
-			form.insertBefore(not_found_div, insert_point);
+			container.insertBefore(not_found_div, insert_point);
 		}
-		
-	
-		maindiv.style.visibility = "visible"; 
+		container.style.visibility = "visible"; 
 	}
-	
+
 	function pull_file_list() {
-		var xmlhttp = new XMLHttpRequest();
-		xmlhttp.onreadystatechange = function() {
-			if (this.readyState == 4 && this.status == 200) {
-				console.log("-----");
-				console.log(this.responseText);
-				console.log("-----");
-				insert_file_list(this.responseText);
-			}
-		};
-	
-		xmlhttp.onerror   = function() {console.log("onerror")};
-		xmlhttp.onabort   = function() {console.log("onabort")};
-		xmlhttp.ontimeout = function() {console.log("ontimeout")};
-	
-		url = "/file_list";
-		if (window.location.protocol == "file:") {
-			// makes for easier debugging.
-			// if html is loaded locally, can see the results of editing more easily.
-			// otherwise every change to html would require uploading new version to microcontroller.
-			url = "http://jiftbox.local"+url;
-		}
-		xmlhttp.open("GET", url, true);
-	
-		//xmlhttp.timeout = 5000;
-		xmlhttp.send();
+		fetch(base_url+"/file_list")
+			.then(response => response.text())
+			.then(data => insert_file_list(data));
 	}
-	
-	
 	
 	pull_file_list();
 	
