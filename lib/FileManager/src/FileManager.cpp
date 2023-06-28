@@ -5,13 +5,6 @@
 //
 // multipart upload??
 //
-// delete folder
-//
-// delete everything
-//
-// move index.html code into program so can wipe LittleFS and not delete index.html
-//
-// add AP code and code to enter SSID and password and mdns name
 //
 // minimize index.html and use gzip to save space?
 //#define index_html_gz_len 726
@@ -47,6 +40,8 @@ uint16_t width = 0;
 uint16_t height = 0;
 String ratio;
 
+bool upload_status = false;
+
 
 class CaptiveRequestHandler : public AsyncWebHandler {
 public:
@@ -67,38 +62,28 @@ public:
 };
 
 
-void handle_folder_upload(AsyncWebServerRequest *request, const String &param_path, size_t index, uint8_t *data, size_t len, bool final) {
+
+void handle_upload(AsyncWebServerRequest *request, const String &param_path, size_t index, uint8_t *data, size_t len, bool final) {
 
   //ESP.wdtDisable();
 
   static File fs_file; //new file to be written to the filesystem
   static String fs_path;
 
+  upload_status = false;
+
   if (!index) {
-    /*
-    size_t filesize = 0;
-
-    // contentLength() includes the count of bytes in bin file plus the bytes in the header and footer.
-    // these extra bytes will cause the writing of a filesystem to fail
-    // so use a separate form input on the upload page to send the actual filesize alongside the bin file
-    if (request->hasParam("filesize", true)) {
-      filesize = request->getParam("filesize", true)->value().toInt();
-    }
-    else {
-      // this doesn't work for spiffs or littlefs 
-      filesize = request->contentLength();
-    }
-    */
-
-    DEBUG_PRINT("if index: ");
-    DEBUG_PRINTLN(param_path);
-
-    String param_path_top_dir = "/";
-    param_path_top_dir += param_path.substring(0, param_path.indexOf('/'));
+    DEBUG_PRINTLN("inside if index: ");
 
     fs_path = "";
-    if (param_path_top_dir != IMG_ROOT) {
-      fs_path = IMG_ROOT;
+    if (request->hasParam("folder_upload", true)) {
+      DEBUG_PRINTLN("folder_upload");
+      String param_path_top_dir = "/";
+      param_path_top_dir += param_path.substring(0, param_path.indexOf('/'));
+
+      if (param_path_top_dir != IMG_ROOT) {
+        fs_path = IMG_ROOT;
+      }
     }
 
     fs_path += "/";
@@ -112,30 +97,31 @@ void handle_folder_upload(AsyncWebServerRequest *request, const String &param_pa
       fs_file.close();
     }
 
-    DEBUG_PRINT("fs_path: ");
-    DEBUG_PRINTLN(fs_path);
     fs_file = LittleFS.open(fs_path, "w");
   }
 
-  for(size_t i = 0; i < len; i++){
-    fs_file.write(data[i]);
-  }
-
-  if (final) {
-    if (fs_file) {
-      delay(1); 
-      fs_file.close();
+  if (fs_file) {
+    for(size_t i = 0; i < len; i++){
+      fs_file.write(data[i]);
     }
 
-    DEBUG_PRINTF("upload complete: %s, %u B\n", fs_path.c_str(), index+len);
-    DEBUG_CONSOLE.flush();
+    if (final) {
+      if (fs_file) {
+        delay(1); 
+        fs_file.close();
+      }
 
-    // if want to load a page after the upload is finished, do so here.
-    //request->send(LittleFS, "/remove.html");
+      DEBUG_PRINTF("upload complete: %s, %u B\n", fs_path.c_str(), index+len);
+      DEBUG_CONSOLE.flush();
+      upload_status = true;
+    }
   }
-
+  else if (final) {
+      DEBUG_PRINTF("upload failed: %s, %u B\n", fs_path.c_str(), index+len);
+      DEBUG_CONSOLE.flush();
+      upload_status = false;
+  }
 }
-
 
 void create_dirs(String path) {
   int f = path.indexOf('/');
@@ -170,9 +156,9 @@ void create_dirs(String path) {
   }
 }
 
-String file_list;
 String file_list_tmp;
-// NOTE: an empty folder will not be added when building a littlefs image.
+String file_list;
+// NOTE: An empty folder will not be added when building a littlefs image.
 // Empty folders will not be created when uploaded either.
 void list_files(File dir, String parent) {
   String path = parent;
@@ -375,8 +361,9 @@ String processor(const String& var) {
     return String(height);
   if(var == "MY_RATIO")
     return String(ratio);
-  return String();
+  return String("failed to get template var");
 }
+
 
 bool filterOnNotLocal(AsyncWebServerRequest *request) {
   // have to refer to service when requesting hostname from MDNS
@@ -392,11 +379,11 @@ void web_server_initiate(void) {
 
   if (WiFi.getMode() == WIFI_STA) {
     web_server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-      //request->send(LittleFS, "/html/index.html");
       request->send(LittleFS, "/html/index.html", String(), false, processor);
 
+      // for reference: alternate methods of sending a webpage
+      //request->send(LittleFS, "/html/index.html");
       //request->send_P(200, "text/html", index_html);
-
       //AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", min_index_html_gz, min_index_html_gz_len);
       //response->addHeader("Content-Encoding", "gzip");
       //request->send(response);
@@ -406,36 +393,41 @@ void web_server_initiate(void) {
       request->redirect("/");
     });
 
-    web_server.on("/upload.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-      request->send(LittleFS, "/html/upload.html");
+    web_server.on("/create_sprite.html", HTTP_GET, [](AsyncWebServerRequest *request) {
+      request->send(LittleFS, "/html/create_sprite.html", String(), false, processor);
     });
 
-    web_server.on("/remove.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-      request->send(LittleFS, "/html/remove.html");
+    web_server.on("/attach_sprites.html", HTTP_GET, [](AsyncWebServerRequest *request) {
+      request->send(LittleFS, "/html/attach_sprites.html", String(), false, processor);
     });
 
-    web_server.on("/network.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-      request->send(LittleFS, "/html/network.html");
+    web_server.serveStatic("/", LittleFS, "/html/");
+
+    // serve all requests to  host/sprites/* (uri) from /littlefs/sprites/ (path)
+    // serveStatic(const char* uri, fs::FS& fs, const char* path, const char* cache_control = NULL)
+    //web_server.serveStatic("/sprites/", LittleFS, "/sprites/").setDefaultFile("notfound.html");
+    //AsyncStaticWebHandler* handler = &web_server.serveStatic("/sprites/", LittleFS, "/sprites/");
+    //handler->setDefaultFile("index.html");
+    //handler->setTemplateProcessor(subst_file_links);
+    //web_server.serveStatic("/images/", LittleFS, "/images/").setDefaultFile("notfound.html");
+
+    web_server.serveStatic("/images/", LittleFS, "/images/");
+
+    web_server.on("/sprite_settings.json", HTTP_GET, [](AsyncWebServerRequest *request) {
+      request->send(LittleFS, "/sprite_settings.json");
     });
 
-    web_server.on("/network.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-      request->send(LittleFS, "/html/network.html");
-    });
-
-    web_server.on("/overlay.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-      //String overlay_url = "/html/overlay.html?display_width=";
-      //overlay_url + String(width) + "&display_height=" + String(height);
-      request->send(LittleFS, "/html/overlay.html", String(), false, processor);
-    });
-
-
-    //OTA update via web page
     //AsyncCallbackWebHandler& on(const char* uri, WebRequestMethodComposite method, ArRequestHandlerFunction onRequest, ArUploadHandlerFunction onUpload);
     web_server.on("/upload", HTTP_POST, [](AsyncWebServerRequest *request) {
-      request->redirect("/upload.html");
-    }, handle_folder_upload);
+      if (upload_status) {
+        request->send(200, "application/json", "{\"upload_status\": 0}"); // maybe return filesize instead so client can verify
+      }
+      else {
+        request->send(500, "application/json", "{\"upload_status\": -1}");
+      }
+    }, handle_upload);
 
-    web_server.on("/files", HTTP_GET, [](AsyncWebServerRequest *request) {
+    web_server.on("/file_list", HTTP_GET, [](AsyncWebServerRequest *request) {
       request->send(200, "text/plain", file_list);
     });
 
@@ -453,19 +445,11 @@ void web_server_initiate(void) {
         }
       }
 
-      // what uses args()? not sure if will need this in the future.
-      /*
-      //List all parameters (Compatibility)
-      int args = request->args();
-      for(int i=0;i<args;i++){
-        DEBUG_PRINTF("ARG[%s]: %s\n", request->argName(i).c_str(), request->arg(i).c_str());
-      }
-      */
-
       request->redirect("/remove.html");
     });
 
     web_server.onNotFound([](AsyncWebServerRequest *request) {
+      Serial.println("onNotFound");
       request->redirect("/");
     });
 
@@ -485,14 +469,6 @@ void web_server_initiate(void) {
 
   web_server.on("/savenetinfo", HTTP_POST, [](AsyncWebServerRequest *request) {
     preferences.begin("netinfo", false);
-
-    //int params = request->params();
-    //for(int i=0; i < params; i++){
-    //  AsyncWebParameter* p = request->getParam(i);
-    //  if(p->isPost()){
-    //    DEBUG_PRINTF("POST[%s]: %s\n", p->name().c_str(), p->value().c_str());
-    //  }
-    //}
 
     if(request->hasParam("ssid", true)) {
       AsyncWebParameter* p = request->getParam("ssid", true);
@@ -569,12 +545,3 @@ void fm_loop(void) {
   handle_file_list();
   handle_delete_list();
 }
-
-//void setup(void) {
-//  DEBUG_BEGIN(115200);
-//  fm_setup();
-//}
-
-//void loop(void) {
-//  fm_loop();
-//}

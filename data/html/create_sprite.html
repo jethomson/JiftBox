@@ -1,0 +1,618 @@
+
+<!DOCTYPE html>
+<html lang="en" class="">
+
+<head>
+<meta charset='utf-8'>
+	<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+	<title>Add Sprite</title>
+	<style>
+	body {
+		color: #eaeaea;
+		text-align: center;
+		font-family: verdana, sans-serif;
+		background: black;
+		/*zoom: 2;
+		-moz-transform: scale(2);
+		-moz-transform-origin: 0 0;*/
+	}
+	canvas{
+		background-color: #002400;
+		display: none;
+		/*image-rendering: pixelated;*/
+	}
+	div {
+		text-align: center;
+		padding: 5px;
+		font-size: 1rem;
+	}
+	div[name="display_border"] {
+		border:1px solid white;
+		margin:0 auto;
+	}
+	
+	p {
+		margin: 0.5rem 0;
+	}
+	
+	image {
+		display: inline-block;
+		margin: auto;
+		vertical-align: middle;
+	}
+	button {
+		margin: 5px;
+	}
+	button,
+	input[type="button"] {
+		border: 0;
+		border-radius: 0.3rem;
+		background: #1fa3ec;
+		color: #faffff;
+		line-height: 2.4rem;
+		font-size: 1.2rem;
+		width: 100%;
+		-webkit-transition-duration: 0.4s;
+		transition-duration: 0.4s;
+		cursor: pointer;
+	}
+	button:hover,
+	input[type="button"]:hover {
+		background: #0e70a4;
+	}
+	input[name="emoji"] { width: auto; display: inline; background:none; border:none; }
+	input[id="input_text"] {
+		display: block;
+		text-align: center;
+		margin: 0 auto;
+	}
+
+	/* HIDE RADIO */
+	[type=radio] { 
+		position: absolute;
+		opacity: 0;
+		width: 0;
+		height: 0;
+	}
+
+	/* IMAGE STYLES */
+	[type=radio] + img {
+		cursor: pointer;
+	}
+
+	/* CHECKED STYLES */
+	[type=radio]:checked + img {
+		outline: 2px solid #f00;
+	}
+	
+	</style>
+</head>
+<body>
+	<div style="display:inline-block; min-width:340px;">
+		<div>
+		<form method="POST" onsubmit="event.preventDefault(); upload()">
+			<div>Enter character(s):</div>
+			<input type="text" id="input_text" maxlength=2 required>
+			<input type="button" name="emoji" value="🙂">
+			<input type="button" name="emoji" value="🤣">
+			<input type="button" name="emoji" value="🤪">
+			<input type="button" name="emoji" value="🤓">
+			<input type="button" name="emoji" value="😎">
+			<input type="button" name="emoji" value="🥳">
+			<br>
+			<input type="button" name="emoji" value="🦔">
+			<input type="button" name="emoji" value="🐕">
+			<input type="button" name="emoji" value="🐈">
+			<input type="button" name="emoji" value="🐒">
+			<input type="button" name="emoji" value="🐘">
+			<input type="button" name="emoji" value="🌻">
+			<br>
+			<input type="button" name="emoji" value="🍕">
+			<input type="button" name="emoji" value="🍟">
+			<input type="button" name="emoji" value="🎂">
+			<input type="button" name="emoji" value="🌈">
+			<input type="button" name="emoji" value="🫀">
+			<input type="button" name="emoji" value="👍">
+			<br>
+			<input type="button" name="emoji" value="🎅">
+			<input type="button" name="emoji" value="❄️">
+			<input type="button" name="emoji" value="🎄">
+			<input type="button" name="emoji" value="⛄">
+			<input type="button" name="emoji" value="🎁">
+			<input type="button" name="emoji" value="⭐">
+			<br>
+			<input type="button" name="emoji" value="👽">
+			<input type="button" name="emoji" value="💀">
+			<input type="button" name="emoji" value="🎃">
+			<input type="button" name="emoji" value="👻">
+			<input type="button" name="emoji" value="🧟">
+			<input type="button" name="emoji" value="🧠">
+			<br>
+			<input type="button" name="emoji" value="💩">
+			<input type="button" name="emoji" value="🤖">
+			<input type="button" name="emoji" value="🚀">
+			<input type="button" name="emoji" value="🛸">
+			<input type="button" name="emoji" value="☢️">
+			<input type="button" name="emoji" value="💣">
+			<br>
+			<label>Angle: <input id="angle" type="number" min=0 max=360></label>
+			<div>White border represents size of display. Dark green background represents transparency. Pick a sprite size:</div>
+			<div name="display_border">
+			<label>
+				<input type="radio" name="size" id="radio_small">
+				<img id="image_small">
+			</label>
+			</div>
+			<br>
+			<div name="display_border">
+			<label>
+				<input type="radio" name="size" id="radio_medium" checked>
+				<img id="image_medium">
+			</label>
+			</div>
+			<br>
+			<div name="display_border">
+			<label>
+				<input type="radio" name="size" id="radio_large">
+				<img id="image_large">
+			</label>
+			</div>
+			<br>
+			<div style="display:flex;justify-content:center;align-items:center;">
+				<!--LittleFS implementation for the ESP8266 supports filenames of up to 31 characters + terminating zero. 31 - 4 (.bmp) = 27 -->
+				<label>Filename: </label><input type="text" id="filename" maxlength="27" pattern="[a-zA-Z0-9]{1,27}" placeholder="Up to 27 letters and numbers are allowed." style="width: 100%" required><label>.bmp</label>
+			</div>
+			<button id="btn_upload_sprite" type="submit">Upload</button>
+		</form>
+		<a href="/"><button name="">Main Menu</button></a>
+		</div>
+	</div>
+
+
+	<script type="text/javascript">
+	
+	/*!
+	  canvas-to-bmp version 1.1.0 BETA
+	  By Epistemex (c) 2015
+	  www.epistemex.com
+	  MIT License (this header required)
+	*/
+	
+	/*
+	  Modified by Jonathan Thomson, 2023, to convert to 16-bit or 24-bit BMP.
+	*/
+	/**
+	 * Static helper object that can convert a CORS-compliant canvas element
+	 * to a 24-bit or 32-bit BMP file (buffer, Blob and data-URI).
+	 *
+	 * @type {{toArrayBuffer: Function, toBlob: Function, toDataURL: Function}}
+	 * @namespace
+	 */
+	var CanvasToBMP = {
+	
+		/**
+		 * Convert a canvas element to ArrayBuffer containing a BMP file
+		 * with support for 32-bit format (alpha). The call is asynchronous
+		 * so a callback must be provided.
+		 *
+		 * Note that CORS requirement must be fulfilled.
+		 *
+		 * @param {HTMLCanvasElement} canvas - the canvas element to convert
+		 * @param {function} callback - called when conversion is done. Argument is ArrayBuffer
+		 * @static
+		 */
+		toArrayBuffer: function(canvas, bpp = 16, callback) {
+	
+			let w              = canvas.width,
+			    h              = canvas.height,
+			    wb = w * bpp/8,                               // width * bytes per pixel
+			    idata          = canvas.getContext("2d").getImageData(0, 0, w, h),
+			    data32         = new Uint32Array(idata.data.buffer),
+	
+			    //stride         = ((32 * w + 31) / 32) << 2,
+			    stride = Math.floor((bpp * w + 31) / 32) * 4, // row length incl. padding
+			    pixelArraySize = stride * h,
+			    fileLength     = 122 + pixelArraySize,
+	
+			    file           = new ArrayBuffer(fileLength),
+			    view           = new DataView(file),
+			    blockSize      = 1 << 20,
+			    block          = blockSize,
+			    y = 0, x, v, a, pos = 0, p, s = 0;
+			    
+			const offset = 0x7a;
+			//const ppm = 2835;               // pixels/meter h (~72 DPI x 39.3701 inch/m) print size. not important.
+			const ppm = 11811;                // pixels/meter h (~300 DPI)
+			console.log(stride);
+			console.log(fileLength);
+
+			// Header
+			set16(0x4d42);                    // BM
+			set32(fileLength);                // total length
+			seek(4);                          // skip unused fields
+			set32(offset);                    // offset to pixels
+			
+			// DIB header
+			set32(0x6c);                      // header size (108)
+			set32(w);
+			// this effects how the BMP is decoded but not encoded
+			// all BMP encoded by this code are stored upside-up
+			// using set32(h) will result in being displayed as upside-down
+			set32(-h >>> 0);                  // negative height = top-to-bottom
+			set16(1);                         // 1 plane
+			set16(bpp);                       // 16, 24, or 32-bits
+			if (bpp == 32 || bpp == 16) set32(3); // no compression (BI_BITFIELDS, 3)
+			else set32(0);                    // no compression (BI_RGB, 0)
+			set32(pixelArraySize);            // bitmap size incl. padding (stride x height)
+			set32(ppm);                       // pixels/meter h (~72 DPI x 39.3701 inch/m)
+			set32(ppm);                       // pixels/meter v
+			seek(8);                          // skip color/important colors
+			if (bpp == 16) set32(0x0000f800); // red channel mask
+			else set32(0x00ff0000);           // red channel mask
+			if (bpp == 16) set32(0x000007e0); // green channel mask
+			else set32(0x0000ff00);           // green channel mask
+			if (bpp == 16) set32(0x0000001f); // blue channel mask
+			else set32(0x000000ff);           // blue channel mask
+			
+			if (bpp == 32) set32(0xff000000); // alpha channel mask
+			else set32(0x00000000);           // no alpha channel mask
+			set32(0x57696e20);                // " win" color space
+			//set32(0x73524742);              // ??? gimp color space
+			//set32(0x00000000);
+
+
+			(function convert() {
+			
+				// bitmap data, change order of ABGR to BGRA (msb-order)
+				var j = 0;
+				while(y < h && block > 0) {
+					p = offset + y * stride;            // offset + stride x height
+					x = 0;
+					j = 0;
+			
+					while(x < wb) {
+						block--;
+						v = data32[s++];                       // get ABGR
+						a = v >>> 24;                          // alpha channel
+						b = v >>> 16 & 0xFF;                   // blue channel
+						g = v >>>  8 & 0xFF;                   // green channel
+						r = v & 0xFF;                          // red channel
+
+						
+						//if (r == 0x00 && g == 0x00 && b == 0x00) { // black
+						if (r == 0x29 && g == 0x2F && b == 0x33) { // #292F33
+						  r = 0x00;
+						  g = 0x24; // transparent for TFT_eSPI
+						  b = 0x00;
+						}
+						
+						if (bpp == 24 || bpp == 32) {
+							view.setUint8(p + x, b);
+							x++;
+							view.setUint8(p + x, g);
+							x++;
+							view.setUint8(p + x, r);
+							x++;
+							if (bpp == 32) {
+								view.setUint8(p + x, a);
+								x++;
+							}
+						}
+						else {
+							pix16 = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
+							/* pseudo 50% alpha experimentation
+							//if (pix16 == 0x0000) { // black
+							//if (pix16 == 0x2966) { // #292F33
+							if ((y % 2 == 0 && j % 2 == 0) || ((y+1) % 2 == 0 && (j+1) % 2 == 0)) { // semi-transparent
+							//if (pix16 <= 0x3186) { // #333333
+							  pix16 = 0x0120; // (0x24 & 0xFC) << 3) transparent for TFT_eSPI
+							}
+							*/
+							view.setUint8(p + x, pix16);
+							x++;
+							view.setUint8(p + x, pix16 >>> 8);
+							x++;
+						}
+						j++
+					}
+					y++
+				}
+			
+				if (s < data32.length) {
+					block = blockSize;
+					setTimeout(convert, CanvasToBMP._dly);
+				}
+				else
+					callback(file);
+			})();
+			
+			// helper method to move current buffer position
+			function set16(data) {
+				view.setUint16(pos, data, true);
+				pos += 2
+			}
+			
+			function set32(data) {
+				view.setUint32(pos, data, true);
+				pos += 4
+			}
+			
+			function seek(delta) {pos += delta}
+		},
+	
+			/**
+			 * Converts a canvas to BMP file, returns a Blob representing the
+			 * file. This can be used with URL.createObjectURL(). The call is
+			 * asynchronous so a callback must be provided.
+			 *
+			 * Note that CORS requirement must be fulfilled.
+			 *
+			 * @param {HTMLCanvasElement} canvas - the canvas element to convert
+			 * @param {function} callback - called when conversion is done. Argument is a Blob
+			 * @static
+			 */
+			toBlob: function(canvas, bpp = 16, callback) {
+				this.toArrayBuffer(canvas, bpp, function(file) {
+					callback(new Blob([file], {type: "image/bmp"}));
+				});
+			},
+			
+			/**
+			 * Converts a canvas to BMP file, returns an ObjectURL (for Blob)
+			 * representing the file. The call is asynchronous so a callback
+			 * must be provided.
+			 *
+			 * **Important**: To avoid memory-leakage you must revoke the returned
+			 * ObjectURL when no longer needed:
+			 *
+			 *     var _URL = self.URL || self.webkitURL || self;
+			 *     _URL.revokeObjectURL(url);
+			 *
+			 * Note that CORS requirement must be fulfilled.
+			 *
+			 * @param {HTMLCanvasElement} canvas - the canvas element to convert
+			 * @param {function} callback - called when conversion is done. Argument is a Blob
+			 * @static
+			 */
+			toObjectURL: function(canvas, bpp = 16, callback) {
+				this.toBlob(canvas, bpp, function(blob) {
+					var url = self.URL || self.webkitURL || self;
+					callback(url.createObjectURL(blob))
+				});
+			},
+			
+			/**
+			 * Converts the canvas to a data-URI representing a BMP file. The
+			 * call is asynchronous so a callback must be provided.
+			 *
+			 * Note that CORS requirement must be fulfilled.
+			 *
+			 * @param {HTMLCanvasElement} canvas - the canvas element to convert
+			 * @param {function} callback - called when conversion is done. Argument is an data-URI (string)
+			 * @static
+			 */
+			toDataURL: function(canvas, bpp = 16, callback) {
+
+				this.toArrayBuffer(canvas, bpp, function(file) {
+					var buffer = new Uint8Array(file),
+						blockSize = 1<<20,
+						block = blockSize,
+						bs = "", base64 = "", i = 0, l = buffer.length;
+			
+					// This is a necessary step before we can use btoa. We can
+					// replace this later with a direct byte-buffer to Base-64 routine.
+					// Will do for now, impacts only with very large bitmaps (in which
+					// case toBlob should be used).
+					(function prepBase64() {
+						while(i < l && block-- > 0) bs += String.fromCharCode(buffer[i++]);
+			
+						if (i < l) {
+							block = blockSize;
+							setTimeout(prepBase64, CanvasToBMP._dly);
+						}
+						else {
+							// convert string to Base-64
+							i = 0;
+							l = bs.length;
+							block = 180000;    // must be divisible by 3
+			
+							(function toBase64() {
+								base64 += btoa(bs.substr(i, block));
+								i += block;
+								(i < l)
+									? setTimeout(toBase64, CanvasToBMP._dly)
+									: callback("data:image/bmp;base64," + base64);
+							})();
+						}
+					})();
+				});
+			}
+	};
+	CanvasToBMP._dly = 9;  // delay for async operations
+
+	
+	
+	base_url = '';
+	if (window.location.protocol == "file:") {
+		// makes for easier debugging.
+		// if html is loaded locally, can see the results of editing more easily.
+		// otherwise every change to html would require uploading new version to microcontroller.
+		base_url = "http://jiftbox.local";
+	}
+
+	//const params = new Proxy(new URLSearchParams(window.location.search), {
+	//	get: (searchParams, prop) => searchParams.get(prop),
+	//});
+	//const display_width = params.display_width;
+	//const display_height = params.display_height;
+	
+
+	// set defaults but allow for webserver to replace templates
+	// if you do not see the templates MY_WIDTH and MY_HEIGHT it is because
+	// they were replaced with numbers
+	let display_width = 240;  // default
+	let display_height = 135; // default
+	if (typeof $MY_WIDTH$ !== "undefined" && typeof $MY_HEIGHT$ !== "undefined") {
+		display_width = $MY_WIDTH$;   // template substitution
+		display_height = $MY_HEIGHT$; // template substitution
+	}
+	
+	const mdim = Math.max(display_width, display_height);
+
+	//const cwidth = Math.round(0.5*mdim);
+	const cwidth = 2*Math.floor(Math.round(0.25*mdim)/2.0)+1; // always odd so there is even space around center
+	const cheight = cwidth;
+	const ccenter = Math.round(cwidth/2.0);
+	//console.log(`${cwidth}, ${cheight}, ${ccenter}`);
+
+	const font_family = "Arial";
+	const font_size = Math.round(0.80*cwidth) + "px";
+	
+	const factor_small = 0.50;
+	const factor_medium = 0.75;
+	const factor_large = 1.00;
+
+	let dcanvas = document.createElement('canvas'); 
+	let ucanvas = document.createElement('canvas');
+	let input = document.getElementById('input_text');
+	
+	let radio_small = document.getElementById('radio_small');
+	let radio_medium = document.getElementById('radio_medium');
+	let radio_large = document.getElementById('radio_large');
+	let image_small = document.getElementById('image_small');
+	let image_medium = document.getElementById('image_medium');
+	let image_large = document.getElementById('image_large');
+
+	const nodeList = document.querySelectorAll('[name="display_border"]');
+	for (let i = 0; i < nodeList.length; i++) {
+		nodeList[i].style.width = display_width + "px";
+		nodeList[i].style.height = display_height + "px";
+	}
+
+
+	const ratio = window.devicePixelRatio;
+
+	// canvas for display. setup to take into account devicePixelRatio
+	dcanvas.style.width = cwidth + "px";
+	dcanvas.style.height = cheight + "px";
+	dcanvas.width = Math.floor(cwidth * ratio);
+	dcanvas.height = Math.floor(cheight * ratio);
+	dcanvas.getContext("2d").scale(ratio, ratio);
+
+	input.style.width = display_width + "px";
+	input.style.fontFamily = font_family;
+	input.style.fontSize = font_size;
+	
+	radio_small.value = factor_small;
+	radio_medium.value = factor_medium;
+	radio_large.value = factor_large;
+
+	image_small.style.width = factor_small*cwidth + 'px';
+	image_small.style.height = factor_small*cheight + 'px';
+	image_medium.style.width = factor_medium*cwidth + 'px';
+	image_medium.style.height = factor_medium*cheight + 'px';
+	image_large.style.width = factor_large*cwidth + 'px';
+	image_large.style.height = factor_large*cheight + 'px';
+
+	
+	function set_attributes(ctx, text) {
+
+		ctx.fillStyle = "#002400"; // green color TFT eSPI to indicate transparency. create transparent background
+		ctx.fillRect(0, 0, cwidth, cheight);
+		
+		ctx.translate(ccenter, ccenter);
+		const angle = document.getElementById('angle').value;
+		ctx.rotate((angle * Math.PI) / 180);
+		ctx.translate(-ccenter, -ccenter);
+
+		ctx.font = font_size +" "+ font_family;
+		ctx.textAlign = 'center';
+		ctx.textBaseline = 'middle';
+		ctx.fillStyle = "#FFFFFF"; // font color
+                //ctx.fillStyle = "rgba(255, 255, 255, 0.5)"; // font color
+		ctx.fillText(text, ccenter, ccenter+Math.round(ccenter/7.5)); //fudge the y pos of center a little to get more even padding top and bottom
+		
+		ctx.setTransform(1, 0, 0, 1, 0, 0);
+		
+		/*
+		ctx.fillStyle = "#FF0000"; // DEBUGGING
+		ctx.fillRect(0, 0, Math.round(1.0*cwidth/3.0), cheight);
+		ctx.fillStyle = "#00FF00"; // DEBUGGING
+		ctx.fillRect(Math.round(1.0*cwidth/3.0), 0, Math.round(2.0*cwidth/3.0), cheight);
+		ctx.fillStyle = "#0000FF"; // DEBUGGING
+		ctx.fillRect(Math.round(2.0*cwidth/3.0)+1, 0, cwidth, cheight);
+		*/
+	}
+
+	function convert(text) {
+		document.getElementById("btn_upload_sprite").textContent = "Upload";
+		if (text != '') {
+			document.getElementById('input_text').value = text;
+		}
+		else {
+			text = document.getElementById('input_text').value;
+		}
+		
+		let dctx = dcanvas.getContext('2d');
+
+		set_attributes(dctx, text);
+		
+		image_small.src = dctx.canvas.toDataURL('image/bmp');
+		image_medium.src = dctx.canvas.toDataURL('image/bmp');
+		image_large.src = dctx.canvas.toDataURL('image/bmp');
+
+		// setting the upload context separately produces a better image than scaling down uctx by ratio and using uctx.drawImage(dcanvas, 0, 0)
+		let factor = document.querySelector('[type=radio]:checked').value;
+		ucanvas.style.width = factor * cwidth + 'px';
+		ucanvas.style.height = factor * cheight + 'px';
+		ucanvas.width = factor * cwidth;
+		ucanvas.height = factor * cheight;
+		
+		let uctx = ucanvas.getContext('2d');
+		uctx.scale(factor, factor);
+		set_attributes(uctx, text);
+	}
+
+	function upload_status(json) {
+		if (json["upload_status"] == 0) {
+			//console.log('File uploaded successfully.');
+			document.getElementById("btn_upload_sprite").textContent = "Upload Successful!";
+		}
+		else {
+			//console.log('File upload failed.');
+			document.getElementById("btn_upload_sprite").textContent = "Upload Failed :(";
+		}
+	}
+
+	function upload() {
+		//ucanvas.toBlob((blob) => { // Chrome will not convert blob to PNG so use custom code
+		CanvasToBMP.toBlob(ucanvas, 16, (blob) => {
+			const filename = 'images/sprites/' + document.getElementById('filename').value + '.bmp';
+			let data = new FormData();
+			data.append("upload", blob, filename);
+			fetch(base_url+'/upload', {method:"POST", body:data})
+				.then(response => response.json())
+				.then(data => upload_status(data));
+		}, 'image/bmp');
+	}
+
+	input.addEventListener('input', function(){convert(this.value)}, false);
+	
+	const emojiList = document.querySelectorAll('[name="emoji"]');
+	for (let i = 0; i < emojiList.length; i++) {
+		emojiList[i].addEventListener('click', function(){convert(this.value)}, false);
+	}
+	const sizeList = document.querySelectorAll('[name="size"]');
+	for (let i = 0; i < sizeList.length; i++) {
+		// need to run convert when size changes but do not want to change text so use ''
+		sizeList[i].addEventListener('click', function(){convert('')}, false);
+	}
+	document.getElementById('angle').addEventListener('change', function(){convert('')}, false);
+
+	var event = new Event('input');
+	input.dispatchEvent(event);
+
+	</script>
+
+</body>
+</html>
