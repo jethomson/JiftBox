@@ -361,7 +361,7 @@ String processor(const String& var) {
     return String(height);
   if(var == "MY_RATIO")
     return String(ratio);
-  return String();
+  return String("failed to get template var");
 }
 
 
