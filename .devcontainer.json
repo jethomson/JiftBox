@@ -1,0 +1,25 @@
+{
+  "name": "cont_jiftbox_jtag",
+
+  // Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
+  //"image": "ubuntu:22.04",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "devcontainer",
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}"
+
+  // Features to add to the dev container. More info: https://containers.dev/features.
+  //"features": {},
+
+  "customizations": {
+    "vscode": {
+      "settings": {},
+      "extensions": ["platformio.platformio-ide"]
+    }
+  },
+
+  // can pio be reloaded automatically?
+  // can Espressif 32 by upgraded to 6.3.2 automatically?
+  //"postCreateCommand": ""
+
+  // "remoteUser": "root"
+}
