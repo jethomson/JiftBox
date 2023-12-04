@@ -12,14 +12,13 @@ static TFT_eSprite *_sprite;
 
 #define DISPLAY_WIDTH  _sprite->width()
 #define DISPLAY_HEIGHT _sprite->height()
-//#define DISPLAY_WIDTH  240
-//#define DISPLAY_HEIGHT 135
-#define BUFFER_SIZE 256            // Optimum is >= GIF width or integral division of width
+//#define GIF_BUFFER_SIZE 256            // Optimum is >= GIF width or integral division of width
+//#define GIF_BUFFER_SIZE 320            // Optimum is >= GIF width or integral division of width
 
 #ifdef USE_DMA
-  uint16_t usTemp[2][BUFFER_SIZE]; // Global to support DMA use
+  uint16_t usTemp[2][GIF_BUFFER_SIZE]; // Global to support DMA use
 #else
-  uint16_t usTemp[1][BUFFER_SIZE];    // Global to support DMA use
+  uint16_t usTemp[1][GIF_BUFFER_SIZE];    // Global to support DMA use
 #endif
 bool     dmaBuf = 0;
 
@@ -75,7 +74,7 @@ void GIFDraw(GIFDRAW *pDraw)
     {
       c = ucTransparent - 1;
       d = &usTemp[0][0];
-      while (c != ucTransparent && s < pEnd && iCount < BUFFER_SIZE )
+      while (c != ucTransparent && s < pEnd && iCount < GIF_BUFFER_SIZE )
       {
         c = *s++;
         if (c == ucTransparent) // done, stop
@@ -114,10 +113,10 @@ void GIFDraw(GIFDRAW *pDraw)
 
     // Unroll the first pass to boost DMA performance
     // Translate the 8-bit pixels through the RGB565 palette (already byte reversed)
-    if (iWidth <= BUFFER_SIZE)
+    if (iWidth <= GIF_BUFFER_SIZE)
       for (iCount = 0; iCount < iWidth; iCount++) usTemp[dmaBuf][iCount] = usPalette[*s++];
     else
-      for (iCount = 0; iCount < BUFFER_SIZE; iCount++) usTemp[dmaBuf][iCount] = usPalette[*s++];
+      for (iCount = 0; iCount < GIF_BUFFER_SIZE; iCount++) usTemp[dmaBuf][iCount] = usPalette[*s++];
 
 #ifdef USE_DMA // 71.6 fps (ST7796 84.5 fps)
     _tft.dmaWait();
@@ -134,10 +133,10 @@ void GIFDraw(GIFDRAW *pDraw)
     while (iWidth > 0)
     {
       // Translate the 8-bit pixels through the RGB565 palette (already byte reversed)
-      if (iWidth <= BUFFER_SIZE)
+      if (iWidth <= GIF_BUFFER_SIZE)
         for (iCount = 0; iCount < iWidth; iCount++) usTemp[dmaBuf][iCount] = usPalette[*s++];
       else
-        for (iCount = 0; iCount < BUFFER_SIZE; iCount++) usTemp[dmaBuf][iCount] = usPalette[*s++];
+        for (iCount = 0; iCount < GIF_BUFFER_SIZE; iCount++) usTemp[dmaBuf][iCount] = usPalette[*s++];
 
 #ifdef USE_DMA
       _tft.dmaWait();
@@ -190,7 +189,7 @@ void GIFDraw(GIFDRAW *pDraw)
     {
       c = ucTransparent - 1;
       d = &usTemp[0][0];
-      while (c != ucTransparent && s < pEnd && iCount < BUFFER_SIZE )
+      while (c != ucTransparent && s < pEnd && iCount < GIF_BUFFER_SIZE )
       {
         c = *s++;
         if (c == ucTransparent) // done, stop
@@ -231,10 +230,10 @@ void GIFDraw(GIFDRAW *pDraw)
 
     // Unroll the first pass to boost DMA performance
     // Translate the 8-bit pixels through the RGB565 palette (already byte reversed)
-    if (iWidth <= BUFFER_SIZE)
+    if (iWidth <= GIF_BUFFER_SIZE)
       for (iCount = 0; iCount < iWidth; iCount++) usTemp[dmaBuf][iCount] = usPalette[*s++];
     else
-      for (iCount = 0; iCount < BUFFER_SIZE; iCount++) usTemp[dmaBuf][iCount] = usPalette[*s++];
+      for (iCount = 0; iCount < GIF_BUFFER_SIZE; iCount++) usTemp[dmaBuf][iCount] = usPalette[*s++];
 
 #ifdef USE_DMA // 71.6 fps (ST7796 84.5 fps)
     _tft.dmaWait();
@@ -253,10 +252,10 @@ void GIFDraw(GIFDRAW *pDraw)
     while (iWidth > 0)
     {
       // Translate the 8-bit pixels through the RGB565 palette (already byte reversed)
-      if (iWidth <= BUFFER_SIZE)
+      if (iWidth <= GIF_BUFFER_SIZE)
         for (iCount = 0; iCount < iWidth; iCount++) usTemp[dmaBuf][iCount] = usPalette[*s++];
       else
-        for (iCount = 0; iCount < BUFFER_SIZE; iCount++) usTemp[dmaBuf][iCount] = usPalette[*s++];
+        for (iCount = 0; iCount < GIF_BUFFER_SIZE; iCount++) usTemp[dmaBuf][iCount] = usPalette[*s++];
 
 #ifdef USE_DMA
       _tft.dmaWait();

@@ -4,6 +4,7 @@
 #include <LittleFS.h>
 #include <SPI.h>
 #include <TFT_eSPI.h>
+
 #include <cstring>
 
 
@@ -15,10 +16,78 @@
 #include "FileManager.h"
 
 
+//#define DEBUG
+#define NUM_GIF_PLAYS 4
+#define SLEEP_AFTER_NUM_PLAYS_ENABLED false
+#define NUM_PLAYS_TIL_SLEEP 20
+#define BOOT_MENU_DELAY 1 // seconds
+// slideshow images aren't expected to have a delay specified, but gif frames always will if created using ezgif.com
+#define SLIDESHOW_DELAY 9000 // milliseconds
+#define USE_FM true // not using the file manager will cut the program size in half
+
+// alternate approach
+//#ifdef ARDUINO_BOARD
+//# if ARDUINO_BOARD == "TTGO-Display"
+//# elif ARDUINO_BOARD == "LilyGo T-Display-S3"
+//# endif
+//#endif
 
 
-//#define DEBUG_CONSOLE Serial
+#ifdef ARDUINO_TTGO_T_DISPLAY
+ #define MAX_IMAGE_WIDTH 240 // Adjust for your images
+ //when USB connector is pointing down, then left button is GPIO0 and right button is GPIO35
+ const uint8_t button_back = 0;
+ const uint8_t button_fwd = 35;
+ #endif
+ #ifdef ARDUINO_LILYGO_T_DISPLAY_S3
+ #include "TouchLib.h"
+ #include "Wire.h"
+
+ #define PIN_LCD_BL                   38 // BackLight enable pin (see Dimming.txt)
+
+ #define PIN_LCD_D0                   39
+ #define PIN_LCD_D1                   40
+ #define PIN_LCD_D2                   41
+ #define PIN_LCD_D3                   42
+ #define PIN_LCD_D4                   45
+ #define PIN_LCD_D5                   46
+ #define PIN_LCD_D6                   47
+ #define PIN_LCD_D7                   48
+
+ #define PIN_POWER_ON                 15 // LCD and battery Power Enable
+
+ #define PIN_LCD_RES                  5
+ #define PIN_LCD_CS                   6
+ #define PIN_LCD_DC                   7
+ #define PIN_LCD_WR                   8
+ #define PIN_LCD_RD                   9
+
+ #define PIN_BUTTON_1                 0
+ #define PIN_BUTTON_2                 14
+ #define PIN_BAT_VOLT                 4
+
+ #define PIN_IIC_SCL                  17
+ #define PIN_IIC_SDA                  18
+
+ # if defined(TOUCH_MODULES_CST_MUTUAL)
+ #define PIN_TOUCH_INT                16
+ #define PIN_TOUCH_RES                21
+ TouchLib touch(Wire, PIN_IIC_SDA, PIN_IIC_SCL, CTS328_SLAVE_ADDRESS, PIN_TOUCH_RES);
+ # elif defined(TOUCH_MODULES_CST_SELF)
+ #define PIN_TOUCH_INT                16
+ #define PIN_TOUCH_RES                21
+ TouchLib touch(Wire, PIN_IIC_SDA, PIN_IIC_SCL, CTS820_SLAVE_ADDRESS, PIN_TOUCH_RES);
+  # endif
+
+
+ #define MAX_IMAGE_WIDTH 320 // Adjust for your images
+ //when USB connector is pointing down, then left button is GPIO0 (boot) and right button is GPIO14
+ const uint8_t button_back = 0;
+ const uint8_t button_fwd = 14;
+ #endif
+
 #undef DEBUG_CONSOLE
+//#define DEBUG_CONSOLE Serial
 #ifdef DEBUG_CONSOLE
  #define DEBUG_BEGIN(x)     DEBUG_CONSOLE.begin (x)
  #define DEBUG_PRINT(x)     DEBUG_CONSOLE.print (x)
@@ -34,16 +103,6 @@
 #endif
 
 using namespace std;
-
-//#define DEBUG
-#define MAX_IMAGE_WIDTH 240 // Adjust for your images
-#define NUM_GIF_PLAYS 254
-#define SLEEP_AFTER_NUM_PLAYS_ENABLED false
-#define NUM_PLAYS_TIL_SLEEP 20
-#define BOOT_MENU_DELAY 1 // seconds
-// slideshow images aren't expected to have a delay specified, but gif frames always will if created using ezgif.com
-#define SLIDESHOW_DELAY 9000 // milliseconds
-#define USE_FM true // not using the file manager will cut the program size in half
 
 
 AnimatedGIF gif;
@@ -69,19 +128,26 @@ struct node *head_node = NULL;
 struct node *curr_node = NULL;
 
 
-//left button is GPIO0 and right button is GPIO35
-const uint8_t button_back = 0;
-const uint8_t button_fwd = 35;
 const uint8_t debounce_delay = 50;
 
 volatile bool check_button_back = false;
 volatile bool check_button_fwd = false;
+#if defined(TOUCH_MODULES_CST_MUTUAL) || defined(TOUCH_MODULES_CST_SELF)
+volatile bool check_touch = false;
+#endif
 void IRAM_ATTR button_back_interrupt() {
   check_button_back = true;
 }
 void IRAM_ATTR button_fwd_interrupt() {
   check_button_fwd = true;
 }
+
+#if defined(TOUCH_MODULES_CST_MUTUAL) || defined(TOUCH_MODULES_CST_SELF)
+void IRAM_ATTR touch_interrupt() {
+  check_touch = true;
+}
+#endif
+
 
 volatile bool times_up = false;
 hw_timer_t * timer = NULL;
@@ -138,12 +204,23 @@ void check_skip() {
       g_skip = -1;
     }
   }
+
   if (check_button_fwd) {
     check_button_fwd = false;
     if (get_button(button_fwd) == LOW) {
       g_skip = 1;
     }
   }
+
+#if defined(TOUCH_MODULES_CST_MUTUAL) || defined(TOUCH_MODULES_CST_SELF)
+  if (check_touch) {
+    check_touch = false;
+    if (touch.read()) {
+      TP_Point t = touch.getPoint(0);
+      g_skip = (t.y < 170) ? -1 : 1;
+    }
+  }
+#endif
 }
 
 
@@ -570,25 +647,47 @@ void handle_jpg(std::string imgname) {
 }
 
 void setup() {
+
+// can free a lot of memory by disabling bluetooth?
+
+//Not reading the battery
+// ??? possible power saving trick I don't understand
+//digitalWrite(POWER_EN_PIN, LOW);
+
+ #ifdef ARDUINO_LILYGO_T_DISPLAY_S3
+   pinMode(PIN_POWER_ON, OUTPUT); 
+   pinMode(PIN_LCD_BL, OUTPUT);
+   digitalWrite(PIN_POWER_ON, HIGH);
+   digitalWrite(PIN_LCD_BL, HIGH);
+
+   digitalWrite(PIN_TOUCH_RES, LOW);
+   delay(500);
+   digitalWrite(PIN_TOUCH_RES, HIGH);
+
+   Wire.begin(PIN_IIC_SDA, PIN_IIC_SCL);
+ #endif
+
 #ifdef DEBUG_CONSOLE
   DEBUG_BEGIN(115200);
-  while (!DEBUG_CONSOLE);
+  //while (!DEBUG_CONSOLE);
 #else
   Serial.begin(115200);
-  while (!Serial);
+  //while (!Serial); // need to add timeout otherwise ESP32-S3 will get stuck here if not connect to computer.
 #endif
 
-  //Not reading the battery
-  // ??? possible power saving trick I don't understand
-  //digitalWrite(POWER_EN_PIN, LOW);
 
-  // schematic doesn't show pullup resistor for GPIO0, S1.
+  // TTGO T-Display schematic doesn't show pullup resistor for GPIO0, S1.
   // other programs for same board don't require internal pullup
   // but my particular board does. odd.
+  // Does LilyGo T-Display S3 also require pullup?
   pinMode(button_back, INPUT_PULLUP); 
   pinMode(button_fwd, INPUT);
   attachInterrupt(button_back, button_back_interrupt, FALLING);
   attachInterrupt(button_fwd, button_fwd_interrupt, FALLING);
+#if defined(TOUCH_MODULES_CST_MUTUAL) || defined(TOUCH_MODULES_CST_SELF)
+  attachInterrupt(PIN_TOUCH_INT, touch_interrupt, CHANGE);
+#endif
+
 
   // Initialise FS
   if (!LittleFS.begin()) {
@@ -633,7 +732,6 @@ void setup() {
   tft.fillScreen(TFT_BLACK);
   tft.setRotation(1);
 
-
   screen_buf.setColorDepth(16);
   screen_buf.createSprite(tft.width(), tft.height());
   //if (screen_buf.createSprite(tft.width(), tft.height()) == nullptr) {
@@ -650,6 +748,7 @@ void setup() {
   //gif.begin(BIG_ENDIAN_PIXELS);
   gif.begin(GIF_PALETTE_RGB565_BE);
 }
+
 
 void loop() {
   DEBUG_PRINTLN(esp_get_free_heap_size());
