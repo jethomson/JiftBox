@@ -115,19 +115,28 @@
 	
 					row.appendChild(checkbox_input);
 	
-					let label_span = document.createElement("span");
+					//var a = document.createElement('a'); 
+					//var link = document.createTextNode("This is link");
+					//a.appendChild(link); 
+					//a.title = "This is Link"; 
+					//a.href = "https://www.geeksforgeeks.org";
+					
+					let label_anchor = document.createElement("a");
 	
 					let label_text = files[i];
 					if (label_text.indexOf("\t") > -1) {
-						label_span.classList.add("span-regular-file");
+						label_anchor.classList.add("span-regular-file");
+						label_href = base_url+label_text.substring(0, label_text.indexOf("\t"));
+						label_anchor.href = label_href;
 						//label_text = "├──"+label_text;
 						//label_text = "\\___"+label_text;
 						label_text = label_text.replace("\t", "\t(");
 						label_text += " bytes)";
 					}
 				
-					label_span.appendChild(document.createTextNode(label_text));
-					row.appendChild(label_span);
+					label_anchor.appendChild(document.createTextNode(label_text));
+
+					row.appendChild(label_anchor);
 					checkbox_div.appendChild(row);
 				}
 			}
