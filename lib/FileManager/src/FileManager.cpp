@@ -368,8 +368,8 @@ String processor(const String& var) {
 bool filterOnNotLocal(AsyncWebServerRequest *request) {
   // have to refer to service when requesting hostname from MDNS
   // but this code is not working for me.
-  //Serial.println(MDNS.hostname(1));
-  //Serial.println(MDNS.hostname(MDNS.queryService("http", "tcp")));
+  //DEBUG_PRINTLN(MDNS.hostname(1));
+  //DEBUG_PRINTLN(MDNS.hostname(MDNS.queryService("http", "tcp")));
   //return request->host() != get_ip() && request->host() != MDNS.hostname(1); 
 
   return request->host() != get_ip() && request->host() != mdns_host;
@@ -449,7 +449,7 @@ void web_server_initiate(void) {
     });
 
     web_server.onNotFound([](AsyncWebServerRequest *request) {
-      Serial.println("onNotFound");
+      DEBUG_PRINTLN("onNotFound");
       request->redirect("/");
     });
 

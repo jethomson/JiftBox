@@ -15,8 +15,6 @@
 
 #include "FileManager.h"
 
-
-//#define DEBUG
 #define NUM_GIF_PLAYS 4
 #define SLEEP_AFTER_NUM_PLAYS_ENABLED false
 #define NUM_PLAYS_TIL_SLEEP 20
@@ -87,7 +85,7 @@
  #endif
 
 #undef DEBUG_CONSOLE
-//#define DEBUG_CONSOLE Serial
+#define DEBUG_CONSOLE Serial
 #ifdef DEBUG_CONSOLE
  #define DEBUG_BEGIN(x)     DEBUG_CONSOLE.begin (x)
  #define DEBUG_PRINT(x)     DEBUG_CONSOLE.print (x)
@@ -542,8 +540,8 @@ void handle_gif(std::string imgname) {
     tft.endWrite(); // Release TFT chip select for other SPI devices
 
     //lTime = micros() - lTime;
-    //Serial.print((int)lTime, DEC);
-    //Serial.println(" microseconds");
+    //DEBUG_PRINT((int)lTime, DEC);
+    //DEBUG_PRINTLN(" microseconds");
   }
 }
 
@@ -670,9 +668,17 @@ void setup() {
 #ifdef DEBUG_CONSOLE
   DEBUG_BEGIN(115200);
   //while (!DEBUG_CONSOLE);
+  uint16_t pm = millis();
+  while (!DEBUG_CONSOLE && (millis() - pm) <= 1000) {
+    delay(250);
+  }
 #else
   Serial.begin(115200);
-  //while (!Serial); // need to add timeout otherwise ESP32-S3 will get stuck here if not connect to computer.
+  // need to add timeout otherwise ESP32-S3 will get stuck here if not connect to computer.
+  uint16_t pm = millis();
+  while (!Serial && (millis() - pm) <= 1000) {
+    delay(250);
+  }
 #endif
 
 
