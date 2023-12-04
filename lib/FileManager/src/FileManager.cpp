@@ -377,6 +377,13 @@ bool filterOnNotLocal(AsyncWebServerRequest *request) {
 
 void web_server_initiate(void) {
 
+  // need to put this before serveStatic(), otherwise serveStatic() will serve restart.html, but not set restart_needed to true;
+  web_server.on("/restart.html", HTTP_GET, [](AsyncWebServerRequest *request) {
+    restart_needed = true;
+    request->send(LittleFS, "/html/restart.html");
+  });
+
+
   if (WiFi.getMode() == WIFI_STA) {
     web_server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
       request->send(LittleFS, "/html/index.html", String(), false, processor);
@@ -493,11 +500,6 @@ void web_server_initiate(void) {
     preferences.end();
 
     request->redirect("/restart.html");
-  });
-
-  web_server.on("/restart.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-    restart_needed = true;
-    request->send(LittleFS, "/html/restart.html");
   });
 
 
