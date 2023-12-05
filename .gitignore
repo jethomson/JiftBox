@@ -1,7 +1,5 @@
 TODO.txt
-data_royalty_free
-data_ttgo_t_display
-data_lilygo_t_display_s3
+data_non-free
 extra
 .pio
 .vscode/.browse.c_cpp.db*
