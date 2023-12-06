@@ -138,7 +138,7 @@
 			});
 	}
 
-	// too many asynchronous calls to http server will crash the ESP32, so use a loop and await to load images in a synchronous/sequential manner
+	// too many asynchronous calls to web server will crash it, so use a loop and await to load images in a synchronous/sequential manner
 	async function load_bg_images_sequential(el_imgs) {
 		if (!el_imgs.length) {
 			return;
@@ -146,26 +146,26 @@
 
 		for (let i = 0; i < el_imgs.length; i++) {
 			await load_bg_image(el_imgs[i]);
+			console.log("load_bg_images_sequential "+Date.now())
 		}
 	}
 
 	function load_sprite(el_sprite) {
-		// hello there. test comment
 		const sprite_name = el_sprite.value;
 		const el_img = document.getElementById( "sprite_img_" + el_sprite.getAttribute("data-index") + "_" + el_sprite.getAttribute("data-filename") );
 		if (sprite_name.startsWith("/images/sprites")) {
 			return new Promise((resolve, reject) => {
-			let image = new Image();
-			image.onload = () => {
-				ctx = el_img.getContext("2d");
-				ctx.drawImage(image, 0, 0, image.width, image.height, 0, 0, g_sprite_canvas_wh, g_sprite_canvas_wh);
-				resolve(true);
-			};
-			image.onerror = () => {
-				image.setAttribute("alt", "Loading image "+base_url+sprite_name+" failed.");
-				reject;
-			}
-			image.src = base_url + sprite_name;
+				let image = new Image();
+				image.onload = () => {
+					ctx = el_img.getContext("2d");
+					ctx.drawImage(image, 0, 0, image.width, image.height, 0, 0, g_sprite_canvas_wh, g_sprite_canvas_wh);
+					resolve(true);
+				};
+				image.onerror = () => {
+					image.setAttribute("alt", "Loading image "+base_url+sprite_name+" failed.");
+					reject;
+				}
+				image.src = base_url + sprite_name;
 			});
 		}
 		else {
@@ -180,6 +180,7 @@
 
 		for (let i = 0; i < el_sprites.length; i++) {
 			await load_sprite(el_sprites[i]);
+			console.log("load_sprites_sequential "+Date.now())
 		}
 	}
 
@@ -234,19 +235,23 @@
 					// data-imgsrc holds the reference to the image we want to load on this page
 					// data-filename is the name of the image* that is loaded in microcontroller while in display mode. *where ALL is a special name indicating sprites settings will be applied to all images. 
 					let imgsrc = filename;
+					let alttext_name = "";
 					if (filename.endsWith(".gif")) {
 						basename_gif = filename.split("/").pop();
+						alttext_name = basename_gif;
 						basename_png = basename_gif.replace(".gif", ".png");
 						filename_thumb = filename.replace(basename_gif, "thumbnails/"+basename_png);
 						if (files.findIndex(entry => entry.includes(filename_thumb)) > -1) {
 							imgsrc = filename_thumb;
+							alttext_name = basename_png;
 						}
 					}
 					else if (filename.startsWith("dataURLimg=")) {
 						imgsrc = make_dataURLimg(filename);
+						alttext_name = filename;
 					}
 					bg_img.setAttribute("data-imgsrc", imgsrc);
-					bg_img.setAttribute("alt", "Loading image. GIFs take a while to load.");
+					bg_img.setAttribute("alt", "Loading image: "+alttext_name+". GIFs take a while to load.");
 					bg_img.width = g_bg_canvas_w;
 					bg_img.style.width = g_bg_canvas_w + "px";
 					bg_img.height = g_bg_canvas_h;
@@ -672,8 +677,10 @@
 
 		maindiv.style.visibility = "visible";
 		
-		let el_imgs = document.querySelectorAll('[id^="bg_img_"]');
-		load_bg_images_sequential([ ...el_imgs]);
+		// these are loaded later instead because we wanted to load the sprite images and sprite settings first
+		// since all of the bg images can take a while to load
+		//let el_imgs = document.querySelectorAll('[id^="bg_img_"]');
+		//load_bg_images_sequential([ ...el_imgs]);
 	}
 
 
@@ -820,7 +827,7 @@
 		}
 	}
 
-	function load_sprite_settings(json) {
+	async function load_sprite_settings(json) {
 		let el_enables = document.querySelectorAll('[id^="enable_sprites_"]');
 
 		for (el_enable of el_enables) {
@@ -921,7 +928,7 @@
 					}
 				}
 			}
-			load_sprites_sequential(el_sprite_queue);
+			await load_sprites_sequential(el_sprite_queue);
 		}
 	}
 
@@ -1019,18 +1026,16 @@
 		create_sprite_files_list(file_list);
 
 		file_list = "dataURLimg=ALL\t0\n" + file_list;
-		//let insert_point = document.getElementById("insert_before_here");
-		//let container = document.getElementById("flex_container");
-		//container.insertBefore(canvas, insert_point);
-
 		create_sprite_settings_ui(file_list);
 
 		const sprite_settings = await data2.json();
-		//let sprite_settings = await data2.text();
-		//console.log(sprite_settings);
-		//sprite_settings = JSON.parse(sprite_settings);
-
-		load_sprite_settings(sprite_settings);
+		// sprite images are loaded here, so use await to be sure the have all finished loading
+		// so we do not crash the web server by loading background images at the same time as the sprite images
+		await load_sprite_settings(sprite_settings);
+		
+		let el_imgs = document.querySelectorAll('[id^="bg_img_"]');
+		// use await here to avoid a crash in case we add more code further down that may also load the web server with requests
+		await load_bg_images_sequential([ ...el_imgs]);
 	}
 
 	load_page();
