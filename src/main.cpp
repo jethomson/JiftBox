@@ -32,72 +32,71 @@
 
 
 #ifdef ARDUINO_TTGO_T_DISPLAY
- #define MAX_IMAGE_WIDTH 240 // Adjust for your images
- //when USB connector is pointing down, then left button is GPIO0 and right button is GPIO35
- const uint8_t button_back = 0;
- const uint8_t button_fwd = 35;
- #endif
- #ifdef ARDUINO_LILYGO_T_DISPLAY_S3
- #include "TouchLib.h"
- #include "Wire.h"
+  #define MAX_IMAGE_WIDTH 240 // Adjust for your images
+  //when USB connector is pointing down, then left button is GPIO0 and right button is GPIO35
+  const uint8_t button_back = 0;
+  const uint8_t button_fwd = 35;
+#endif
+#ifdef ARDUINO_LILYGO_T_DISPLAY_S3
+  #include "TouchLib.h"
+  #include "Wire.h"
 
- #define PIN_LCD_BL                   38 // BackLight enable pin (see Dimming.txt)
+  #define PIN_LCD_BL                   38 // BackLight enable pin (see Dimming.txt)
 
- #define PIN_LCD_D0                   39
- #define PIN_LCD_D1                   40
- #define PIN_LCD_D2                   41
- #define PIN_LCD_D3                   42
- #define PIN_LCD_D4                   45
- #define PIN_LCD_D5                   46
- #define PIN_LCD_D6                   47
- #define PIN_LCD_D7                   48
+  #define PIN_LCD_D0                   39
+  #define PIN_LCD_D1                   40
+  #define PIN_LCD_D2                   41
+  #define PIN_LCD_D3                   42
+  #define PIN_LCD_D4                   45
+  #define PIN_LCD_D5                   46
+  #define PIN_LCD_D6                   47
+  #define PIN_LCD_D7                   48
 
- #define PIN_POWER_ON                 15 // LCD and battery Power Enable
+  #define PIN_POWER_ON                 15 // LCD and battery Power Enable
 
- #define PIN_LCD_RES                  5
- #define PIN_LCD_CS                   6
- #define PIN_LCD_DC                   7
- #define PIN_LCD_WR                   8
- #define PIN_LCD_RD                   9
+  #define PIN_LCD_RES                  5
+  #define PIN_LCD_CS                   6
+  #define PIN_LCD_DC                   7
+  #define PIN_LCD_WR                   8
+  #define PIN_LCD_RD                   9
 
- #define PIN_BUTTON_1                 0
- #define PIN_BUTTON_2                 14
- #define PIN_BAT_VOLT                 4
+  #define PIN_BUTTON_1                 0
+  #define PIN_BUTTON_2                 14
+  #define PIN_BAT_VOLT                 4
 
- #define PIN_IIC_SCL                  17
- #define PIN_IIC_SDA                  18
+  #define PIN_IIC_SCL                  17
+  #define PIN_IIC_SDA                  18
 
- # if defined(TOUCH_MODULES_CST_MUTUAL)
- #define PIN_TOUCH_INT                16
- #define PIN_TOUCH_RES                21
- TouchLib touch(Wire, PIN_IIC_SDA, PIN_IIC_SCL, CTS328_SLAVE_ADDRESS, PIN_TOUCH_RES);
- # elif defined(TOUCH_MODULES_CST_SELF)
- #define PIN_TOUCH_INT                16
- #define PIN_TOUCH_RES                21
- TouchLib touch(Wire, PIN_IIC_SDA, PIN_IIC_SCL, CTS820_SLAVE_ADDRESS, PIN_TOUCH_RES);
-  # endif
+  #if defined(TOUCH_MODULES_CST_MUTUAL)
+    #define PIN_TOUCH_INT                16
+    #define PIN_TOUCH_RES                21
+    TouchLib touch(Wire, PIN_IIC_SDA, PIN_IIC_SCL, CTS328_SLAVE_ADDRESS, PIN_TOUCH_RES);
+  #elif defined(TOUCH_MODULES_CST_SELF)
+    #define PIN_TOUCH_INT                16
+    #define PIN_TOUCH_RES                21
+    TouchLib touch(Wire, PIN_IIC_SDA, PIN_IIC_SCL, CTS820_SLAVE_ADDRESS, PIN_TOUCH_RES);
+  #endif
 
-
- #define MAX_IMAGE_WIDTH 320 // Adjust for your images
- //when USB connector is pointing down, then left button is GPIO0 (boot) and right button is GPIO14
- const uint8_t button_back = 0;
- const uint8_t button_fwd = 14;
- #endif
+  #define MAX_IMAGE_WIDTH 320 // Adjust for your images
+  //when USB connector is pointing down, then left button is GPIO0 (boot) and right button is GPIO14
+  const uint8_t button_back = 0;
+  const uint8_t button_fwd = 14;
+#endif
 
 #undef DEBUG_CONSOLE
 #define DEBUG_CONSOLE Serial
 #ifdef DEBUG_CONSOLE
- #define DEBUG_BEGIN(x)     DEBUG_CONSOLE.begin (x)
- #define DEBUG_PRINT(x)     DEBUG_CONSOLE.print (x)
- #define DEBUG_PRINTDEC(x)     DEBUG_PRINT (x, DEC)
- #define DEBUG_PRINTLN(x)  DEBUG_CONSOLE.println (x)
- #define DEBUG_PRINTF(...) DEBUG_CONSOLE.printf(__VA_ARGS__)
+  #define DEBUG_BEGIN(x)     DEBUG_CONSOLE.begin (x)
+  #define DEBUG_PRINT(x)     DEBUG_CONSOLE.print (x)
+  #define DEBUG_PRINTDEC(x)     DEBUG_PRINT (x, DEC)
+  #define DEBUG_PRINTLN(x)  DEBUG_CONSOLE.println (x)
+  #define DEBUG_PRINTF(...) DEBUG_CONSOLE.printf(__VA_ARGS__)
 #else
- #define DEBUG_BEGIN(x)
- #define DEBUG_PRINT(x)
- #define DEBUG_PRINTDEC(x)
- #define DEBUG_PRINTLN(x)
- #define DEBUG_PRINTF(...)
+  #define DEBUG_BEGIN(x)
+  #define DEBUG_PRINT(x)
+  #define DEBUG_PRINTDEC(x)
+  #define DEBUG_PRINTLN(x)
+  #define DEBUG_PRINTF(...)
 #endif
 
 using namespace std;
@@ -652,18 +651,18 @@ void setup() {
 // ??? possible power saving trick I don't understand
 //digitalWrite(POWER_EN_PIN, LOW);
 
- #ifdef ARDUINO_LILYGO_T_DISPLAY_S3
-   pinMode(PIN_POWER_ON, OUTPUT); 
-   pinMode(PIN_LCD_BL, OUTPUT);
-   digitalWrite(PIN_POWER_ON, HIGH);
-   digitalWrite(PIN_LCD_BL, HIGH);
+#ifdef ARDUINO_LILYGO_T_DISPLAY_S3
+  pinMode(PIN_POWER_ON, OUTPUT); 
+  pinMode(PIN_LCD_BL, OUTPUT);
+  digitalWrite(PIN_POWER_ON, HIGH);
+  digitalWrite(PIN_LCD_BL, HIGH);
 
-   digitalWrite(PIN_TOUCH_RES, LOW);
-   delay(500);
-   digitalWrite(PIN_TOUCH_RES, HIGH);
+  digitalWrite(PIN_TOUCH_RES, LOW);
+  delay(500);
+  digitalWrite(PIN_TOUCH_RES, HIGH);
 
-   Wire.begin(PIN_IIC_SDA, PIN_IIC_SCL);
- #endif
+  Wire.begin(PIN_IIC_SDA, PIN_IIC_SCL);
+#endif
 
 #ifdef DEBUG_CONSOLE
   DEBUG_BEGIN(115200);
